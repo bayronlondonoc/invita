@@ -213,7 +213,7 @@ body {
   top: 0;
   will-change: transform;
   transform-origin: 50% 50%;
-  transition: transform 280ms var(--rebote), opacity .3s ease, background-color .2s ease;
+  transition: transform 480ms var(--rebote), opacity .3s ease, background-color .2s ease;
 }
 .arena:not(.lista) .btn { visibility: hidden; }
 .arena .btn-si { z-index: 2; }
@@ -239,7 +239,7 @@ body {
   color: var(--c-acento);
   opacity: 0;
 }
-.frase.entra { animation: subir .5s var(--salida) forwards; }
+.frase.entra { animation: subir .6s var(--salida) forwards; }
 .frase.final { font-weight: 600; }
 @keyframes subir {
   from { opacity: 0; transform: translateY(8px); }

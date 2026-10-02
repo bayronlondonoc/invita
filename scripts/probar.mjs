@@ -207,7 +207,7 @@ async function escenarioToques({ ancho, alto, completo }) {
       verificar(m.siArriba, `intento ${n} (vuelo ${t}ms): algo tapó el Sí`);
       if (n < limite && t === 60) verificar(['jaja', '😜'].includes(m.textoNo), `intento ${n}: el No no se rió (dice "${m.textoNo}")`);
     }
-    await dormir(n === limite ? 700 : 400);
+    await dormir(n === limite ? 1300 : 1250);  // > LECTURA (1200 ms) entre intentos contados
     g = await geo();
     revisarGeometria(g, `intento ${n}`);
     if (n < limite) {
@@ -246,9 +246,10 @@ async function escenarioToques({ ancho, alto, completo }) {
   const href = await ev('document.querySelector(".btn-whatsapp").href');
   const u = new URL(href);
   const esperado = `¡Sí! 💛 Nos vemos el ${fechaES(cita.fecha)} a las ${h12(cita.horarios[0]).replace(/\.$/, '')}. Intenté decir que no ${limite} ${limite === 1 ? 'vez' : 'veces'} 😂\n\nMi lugar favorito es Crepes & Waffles; ¿vale?`;
-  verificar(u.origin + u.pathname === `https://wa.me/${cita.whatsapp_destino}`, `destino de WhatsApp: ${u.origin + u.pathname}`);
+  verificar(u.origin + u.pathname === 'https://api.whatsapp.com/send' && u.searchParams.get('phone') === cita.whatsapp_destino, `destino de WhatsApp: ${href.split('&text')[0]}`);
+  verificar(!href.includes('%EF%BF%BD') && href.includes('%F0%9F%92%9B'), 'los emojis del enlace de WhatsApp no van bien codificados');
   verificar(u.searchParams.get('text') === esperado, `mensaje de WhatsApp:\n${u.searchParams.get('text')}\n≠\n${esperado}`);
-  console.log(`  ✓ WhatsApp → ${u.origin + u.pathname}\n    «${u.searchParams.get('text').replace(/\n/g, '⏎')}»`);
+  console.log(`  ✓ WhatsApp → ${href.split('&text')[0]}\n    «${u.searchParams.get('text').replace(/\n/g, '⏎')}»`);
 
   // ICS
   const ics = await ev('__invita.generarICS()');

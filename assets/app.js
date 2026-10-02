@@ -176,9 +176,11 @@
     const RADIO_RATON = 90;
     const RADIO_DEDO = 70;
     const LEJOS = 120;         // distancia mínima al puntero tras huir
-    const PAUSA = 280;         // una huida por gesto (pointerdown + touchstart)
+    const PAUSA = 300;         // una huida por gesto (pointerdown + touchstart)
+    const LECTURA = 1200;      // tiempo mínimo entre intentos contados: que cada frase se alcance a leer
+    const VUELO = 480;         // lo que dura el salto (ver .arena .btn en styles.css)
 
-    const st = { intentos: 0, rendido: false, ultima: -Infinity, W: 0, H: 0,
+    const st = { intentos: 0, rendido: false, ultima: -Infinity, ultimoConteo: -Infinity, W: 0, H: 0,
       si: { x: 0, y: 0 }, no: { x: 0, y: 0 }, risa: 0, bloqueo: 0 };
     const control = new AbortController();
     const opc = { signal: control.signal };
@@ -294,12 +296,19 @@
       const ahora = performance.now();
       if (ahora - st.ultima < PAUSA) return;
       st.ultima = ahora;
-      st.intentos += 1;
-      vibrar();
       // Mientras vuela no recibe toques: si el dedo sigue ahí, el evento cae en la arena.
       no.style.pointerEvents = 'none';
       clearTimeout(st.bloqueo);
-      st.bloqueo = setTimeout(() => { no.style.pointerEvents = ''; }, 320);
+      st.bloqueo = setTimeout(() => { no.style.pointerEvents = ''; }, VUELO);
+      // Si la frase anterior aún se está leyendo, el No igual se escapa pero no cuenta intento.
+      if (ahora - st.ultimoConteo < LECTURA) {
+        const p = buscarPosicion(desde || st.no);
+        moverNo(p.x, p.y, true);
+        return;
+      }
+      st.ultimoConteo = ahora;
+      st.intentos += 1;
+      vibrar();
       if (st.intentos >= limite) {
         rendirse();
         return;
@@ -490,7 +499,8 @@
     if (r.mensaje) m += `\n\n${r.mensaje}`;
     return m;
   }
-  const enlaceWhatsApp = (c, r) => `https://wa.me/${c.whatsapp_destino}?text=${encodeURIComponent(mensajeWhatsApp(c, r))}`;
+  // Directo a api.whatsapp.com: el redireccionamiento de wa.me convierte los emojis en "�".
+  const enlaceWhatsApp = (c, r) => `https://api.whatsapp.com/send?phone=${c.whatsapp_destino}&text=${encodeURIComponent(mensajeWhatsApp(c, r))}`;
 
   const tituloEvento = (c) => (c.de ? `${c.plan_titulo} con ${primerNombre(c.de)}` : c.plan_titulo);
   const detallesEvento = (c) => [c.plan_descripcion, c.pista && `Pista: ${c.pista}`, c.cierre].filter(Boolean).join('\n\n');
