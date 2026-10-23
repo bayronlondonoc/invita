@@ -14,17 +14,19 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TEMAS = ['personal', 'raices', 'curazaos'];
+const TEMAS = ['personal', 'raices', 'curazaos', 'rayo'];
+// Color de la barra del navegador por tema (el fondo de arriba de cada uno).
+const COLOR_BARRA = { personal: '#E7DACA', raices: '#E6CAB2', curazaos: '#DCE8E6', rayo: '#FFE9B8' };
 const ALFABETO = 'abcdefghjkmnpqrstuvwxyz23456789';   // sin 0/o/1/l/i para que no se confundan
 
 // Orden en que se escribe cita.json.
 const CAMPOS = [
   'para', 'de', 'pregunta', 'plan_titulo', 'plan_descripcion', 'fecha', 'horarios', 'duracion_horas',
-  'pista', 'lugar', 'cierre', 'mensaje_placeholder', 'whatsapp_destino', 'tema', 'frases_no',
+  'pista', 'lugar', 'momento', 'recorrido', 'cierre', 'mensaje_placeholder', 'whatsapp_destino', 'tema', 'frases_no',
   'intentos_para_desaparecer',
 ];
 const OBLIGATORIOS = ['para', 'de', 'pregunta', 'plan_titulo', 'plan_descripcion', 'fecha', 'horarios', 'whatsapp_destino'];
-const TEXTOS_OPCIONALES = ['pista', 'lugar', 'cierre', 'mensaje_placeholder'];
+const TEXTOS_OPCIONALES = ['pista', 'lugar', 'momento', 'cierre', 'mensaje_placeholder'];
 
 const slugificar = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -107,6 +109,17 @@ function validar(entrada, defaults) {
     }
   }
 
+  if (c.recorrido !== undefined) {
+    if (!Array.isArray(c.recorrido) || !c.recorrido.length || c.recorrido.some((p) => typeof p !== 'string' || !p.trim())) {
+      errores.push('"recorrido" debe ser una lista de pasos (texto), ej. ["Pits: cafés de montaña", "Último tramo: lodo"]');
+    } else {
+      c.recorrido = c.recorrido.map((p) => p.trim());
+      if (c.recorrido.length > 6) avisos.push('"recorrido" tiene más de 6 pasos; en el celular se hace largo.');
+    }
+  }
+
+  if (c.momento && c.momento.length > 40) avisos.push('"momento" es largo; va junto a la hora, mejor algo corto.');
+
   c.intentos_para_desaparecer ??= 7;
   if (!Number.isInteger(c.intentos_para_desaparecer) || c.intentos_para_desaparecer < 1 || c.intentos_para_desaparecer > 20) {
     errores.push('"intentos_para_desaparecer" debe ser un entero entre 1 y 20');
@@ -145,7 +158,7 @@ function plantilla(baseUrl, tema) {
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Un sobre cerrado con sello de lacre">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#E7DACA">
+  <meta name="theme-color" content="${COLOR_BARRA[tema]}">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💌%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

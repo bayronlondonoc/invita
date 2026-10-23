@@ -68,6 +68,47 @@
   --c-sobre-interior: #F2B8A0;  /* TODO */
 }
 
+/* Rayo — Gran Premio: rojo de carreras, amarillo de rayo y atardecer de montaña. */
+.tema-rayo {
+  --c-papel: #FFF8EE;
+  --c-tinta: #2A2120;
+  --c-acento: #C8102E;          /* rojo de carreras */
+  --c-acento-luz: #EE4A5C;
+  --c-acento-oscuro: #8C0A1F;
+  --c-suave: #F7C948;
+  --c-lacre: #F2B705;           /* amarillo del rayo */
+  --c-lacre-luz: #FFD95A;
+  --c-lacre-oscuro: #A87800;
+  --c-fondo: #F4A66E;
+  --c-fondo-luz: #FFD7A1;
+  --c-tinta-suave: rgba(42, 33, 32, .68);
+  --c-linea: rgba(200, 16, 46, .26);
+  --c-sombra: rgba(110, 35, 25, .34);
+  --c-sobre: #C8102E;
+  --c-sobre-solapa: #E23246;
+  --c-sobre-interior: #6E0818;
+  --c-cielo-alto: #FFE9B8;
+  --c-cielo-bajo: #EE8A60;
+  --c-sol: #FFF4D4;
+  --c-sol-halo: rgba(255, 244, 212, .5);
+  --c-montana-lejos: #DC7F6B;
+  --c-montana-cerca: #9E3A45;
+  --c-asfalto: #2E2A30;
+  --c-raya: #F7C948;
+  --c-llanta: #1F1C20;
+  --c-rin: #E23246;
+  --c-vidrio: #2B2731;
+  --c-ojo: #3C83C8;
+  --c-huella: rgba(46, 42, 48, .3);
+  --c-polvo: rgba(160, 120, 90, .4);
+  --c-cuadro: #2A2120;
+  --c-luz-apagada: #4A444D;
+  --c-luz-roja: #FF3B3B;
+  --c-luz-roja-halo: rgba(255, 59, 59, .55);
+  --c-luz-verde: #39E07A;
+  --c-luz-verde-halo: rgba(57, 224, 122, .55);
+}
+
 /* ---------- Base ---------- */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -495,6 +536,11 @@ body {
   text-transform: uppercase;
   color: var(--c-acento);
 }
+.resumen__momento {
+  margin-top: 6px;
+  font: italic 400 1.15rem/1.3 var(--f-serif);
+  color: var(--c-tinta-suave);
+}
 .resumen__lugar { margin: 12px 0 0; color: var(--c-tinta-suave); }
 .cierre {
   margin: 20px 0 0;
@@ -508,6 +554,331 @@ body {
   font-size: .9rem;
   color: var(--c-tinta-suave);
   text-underline-offset: 3px;
+}
+
+/* ---------- Recorrido del plan ---------- */
+
+.recorrido { margin: 24px 0 0; text-align: left; }
+.recorrido > .etiqueta { display: block; margin: 0 0 12px; text-align: center; }
+.recorrido ol { margin: 0; padding: 0; list-style: none; }
+.recorrido li {
+  position: relative;
+  padding: 0 0 16px 32px;
+  font: italic 500 1.12rem/1.3 var(--f-serif);
+}
+.recorrido li:last-child { padding-bottom: 0; }
+.recorrido li::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--c-acento);
+  border-radius: 50%;
+  background: var(--c-papel);
+}
+.recorrido li::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 18px;
+  bottom: 2px;
+  border-left: 1px dashed var(--c-linea);
+}
+.recorrido li:last-child::after { display: none; }
+.recorrido b {
+  display: block;
+  margin-bottom: 2px;
+  font: normal 400 .7rem/1.4 var(--f-sans);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--c-acento);
+}
+
+/* ---------- Carro (dibujo SVG) ---------- */
+
+.carro { display: block; width: 100%; height: auto; overflow: visible; }
+.carro__sombra { fill: var(--c-sombra); opacity: .55; }
+.carro__cuerpo { fill: var(--c-acento); }
+.carro__aleron, .carro__guardabarro { fill: var(--c-acento-oscuro); }
+.carro__brillo { fill: none; stroke: var(--c-acento-luz); stroke-width: 2.4; stroke-linecap: round; opacity: .85; }
+.carro__ventana { fill: var(--c-vidrio); }
+.carro__rayo { fill: var(--c-lacre); stroke: var(--c-lacre-oscuro); stroke-width: .8; stroke-linejoin: round; }
+.carro__numero {
+  font: italic 500 20px var(--f-sans);
+  fill: var(--c-acento);
+  stroke: var(--c-tinta);
+  stroke-width: 1px;
+  paint-order: stroke;
+}
+.carro__ojo { fill: var(--c-papel); stroke: var(--c-tinta); stroke-width: 1.3; }
+.carro__iris { fill: var(--c-ojo); }
+.carro__pupila { fill: var(--c-tinta); }
+.carro__luz-ojo { fill: var(--c-papel); }
+.carro__faro { fill: var(--c-lacre-luz); }
+.carro__boca { fill: none; stroke: var(--c-tinta); stroke-width: 2.4; stroke-linecap: round; }
+.carro__llanta { fill: var(--c-llanta); }
+.carro__rin { fill: var(--c-rin); }
+.carro__rayos { stroke: var(--c-llanta); stroke-width: 2.2; }
+.carro__centro { fill: var(--c-lacre-luz); }
+.carro__rueda { transform-box: fill-box; transform-origin: center; }
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ---------- Largada: semáforo, grito y arranque ---------- */
+
+.pantalla--largada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  text-align: center;
+}
+.semaforo {
+  display: flex;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 999px;
+  background: var(--c-asfalto);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .08), 0 16px 30px -14px var(--c-sombra);
+}
+.luz {
+  width: clamp(46px, 14vw, 58px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--c-luz-apagada);
+  box-shadow: inset 0 -5px 10px rgba(0, 0, 0, .45);
+  transition: background-color .1s linear, box-shadow .1s linear;
+}
+.luz.roja {
+  background: var(--c-luz-roja);
+  box-shadow: inset 0 -5px 10px rgba(0, 0, 0, .25), 0 0 24px 4px var(--c-luz-roja-halo);
+}
+.luz.verde {
+  background: var(--c-luz-verde);
+  box-shadow: inset 0 -5px 10px rgba(0, 0, 0, .2), 0 0 28px 6px var(--c-luz-verde-halo);
+}
+.largada__grito {
+  min-height: 1.1em;
+  margin: 0;
+  font: italic 600 clamp(2.8rem, 14vw, 3.8rem)/1 var(--f-serif);
+  color: var(--c-acento);
+  text-shadow: 3px 3px 0 var(--c-lacre);
+  opacity: 0;
+}
+.largada__grito.entra { animation: grito .6s var(--rebote) forwards; }
+@keyframes grito {
+  from { opacity: 0; transform: scale(.5) rotate(-8deg); }
+  to   { opacity: 1; transform: scale(1) rotate(-3deg); }
+}
+.largada__pista {                 /* de borde a borde de la pantalla, para que el carro salga de verdad */
+  position: relative;
+  width: 100vw;
+  height: clamp(110px, 32vw, 140px);
+  margin-inline: calc(50% - 50vw);
+  overflow: hidden;
+}
+.largada__carro {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: min(62vw, 250px);
+  transform: translateX(-50%);
+  animation: ralenti .14s linear infinite alternate;
+}
+.largada__carro::before,
+.largada__carro::after {          /* estela del rayo */
+  content: "";
+  position: absolute;
+  right: 88%;
+  width: 0;
+  border-radius: 9px;
+}
+.largada__carro::before { bottom: 30%; height: 9px; background: linear-gradient(to left, var(--c-lacre), var(--c-acento) 55%, transparent); }
+.largada__carro::after  { bottom: 50%; height: 3px; background: linear-gradient(to left, var(--c-lacre-luz), transparent); }
+.arranca .largada__carro { animation: salir 1.05s cubic-bezier(.5, 0, .9, .3) forwards; }
+.arranca .largada__carro::before { animation: estela 1.05s cubic-bezier(.5, 0, .9, .3) forwards; }
+.arranca .largada__carro::after  { animation: estela 1.05s cubic-bezier(.5, 0, .9, .3) .06s forwards; }
+.arranca .carro__rueda { animation: girar .2s linear infinite; }
+@keyframes ralenti {
+  from { transform: translateX(-50%) translateY(0); }
+  to   { transform: translateX(-50%) translateY(-1px); }
+}
+@keyframes salir {
+  0%   { transform: translateX(-50%); }
+  14%  { transform: translateX(-54%) rotate(-2deg); }
+  100% { transform: translateX(110vw) rotate(-1deg); }
+}
+@keyframes estela { from { width: 0; } to { width: 120vw; } }
+
+/* ---------- Huellas de llanta del No ---------- */
+
+.huellas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.huella { transition: opacity 1.4s ease; }
+.huella.seca { opacity: 0; }
+.huella polyline {
+  fill: none;
+  stroke: var(--c-huella, var(--c-linea));
+  stroke-width: 5;
+  stroke-dasharray: 3 2;
+  stroke-linejoin: round;
+}
+.polvo {
+  fill: var(--c-polvo, var(--c-linea));
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: polvo .8s ease-out forwards;
+}
+@keyframes polvo {
+  from { opacity: .9; transform: scale(.4); }
+  to   { opacity: 0; transform: scale(1.9); }
+}
+
+/* ---------- Velocímetro ---------- */
+
+.velocimetro { width: min(100%, 230px); margin: 20px auto 0; }
+.velocimetro svg { display: block; width: 100%; height: auto; overflow: visible; }
+.vel__arco, .vel__zona { fill: none; stroke-width: 7; stroke-linecap: round; }
+.vel__arco { stroke: var(--c-linea); }
+.vel__zona { stroke: var(--c-acento); }
+.vel__marca { stroke: var(--c-tinta-suave); stroke-width: 1.2; }
+.vel__marca--mayor { stroke: var(--c-tinta); stroke-width: 2.2; }
+.vel__numero { font: 400 9px var(--f-sans); fill: var(--c-tinta-suave); }
+.vel__aguja { transform-box: view-box; transform-origin: 100px 100px; }
+.vel__aguja line { stroke: var(--c-acento); stroke-width: 3.2; stroke-linecap: round; }
+.vel__aguja circle { fill: var(--c-tinta); }
+.vel__cifra {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  margin: 2px 0 0;
+  font: 400 .72rem/1 var(--f-sans);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--c-tinta-suave);
+}
+.vel__lectura {
+  min-width: 2.2em;
+  font: italic 600 2.3rem/1 var(--f-serif);
+  letter-spacing: 0;
+  color: var(--c-tinta);
+  text-align: right;
+}
+.vel__texto {
+  margin: 8px 0 0;
+  font: 500 .74rem/1.4 var(--f-sans);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--c-acento);
+  opacity: 0;
+  transition: opacity .6s ease;
+}
+.velocimetro.listo .vel__texto { opacity: 1; }
+
+.confirmado__carro { width: 150px; margin: -4px auto 16px; }
+
+/* ---------- Tema Rayo: escenografía y detalles ---------- */
+
+/* Atardecer, colinas y carretera, todo con gradientes (colores del tema, sin imágenes). */
+body.tema-rayo { background-image: none; }
+body.tema-rayo::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, var(--c-raya) 0 26px, transparent 26px 56px) left 0 bottom 3.2vh / 100% 3px no-repeat,
+    linear-gradient(var(--c-asfalto), var(--c-asfalto)) left 0 bottom 0 / 100% 7.5vh no-repeat,
+    radial-gradient(ellipse 52% 19vh at 12% calc(100% - 5vh), var(--c-montana-cerca) 99.4%, transparent 100%),
+    radial-gradient(ellipse 62% 15vh at 84% calc(100% - 5vh), var(--c-montana-cerca) 99.4%, transparent 100%),
+    radial-gradient(ellipse 46% 30vh at 34% calc(100% - 5vh), var(--c-montana-lejos) 99.4%, transparent 100%),
+    radial-gradient(ellipse 44% 25vh at 96% calc(100% - 5vh), var(--c-montana-lejos) 99.4%, transparent 100%),
+    radial-gradient(circle at 70% 62%, var(--c-sol) 0 6.5vmin, var(--c-sol-halo) 7vmin, transparent 17vmin),
+    linear-gradient(to bottom, var(--c-cielo-alto), var(--c-fondo-luz) 38%, var(--c-fondo) 72%, var(--c-cielo-bajo));
+}
+
+/* Tarjeta con franja a cuadros de bandera de llegada */
+.tema-rayo .tarjeta { border-radius: 16px; padding-top: clamp(40px, 10vw, 54px); }
+.tema-rayo .tarjeta::before { inset: 22px 10px 10px; border-radius: 8px; }
+.tema-rayo .tarjeta::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 12px;
+  border-radius: 16px 16px 0 0;
+  background: repeating-conic-gradient(var(--c-cuadro) 0 25%, var(--c-papel) 0 50%) 0 0 / 12px 12px;
+  pointer-events: none;
+}
+
+/* Sobre rojo con rayo y sello amarillo del 95 */
+.tema-rayo .sobre__destino { color: var(--c-papel); }
+.tema-rayo .sobre__bolsillo::after {
+  content: "";
+  position: absolute;
+  left: 11%;
+  right: 11%;
+  bottom: 23%;
+  height: 15%;
+  background: var(--c-lacre);
+  clip-path: polygon(0 71%, 38.6% 21%, 34.7% 50%, 70.5% 0, 65.3% 42%, 100% 21%, 64.2% 83%, 68.2% 54%, 31.8% 100%, 35.8% 67%);
+}
+.tema-rayo .sello__letra { font-size: clamp(1.25rem, 6.4vw, 1.7rem); color: rgba(110, 8, 24, .78); }
+
+.tema-rayo .btn-si {
+  background: linear-gradient(180deg, var(--c-acento-luz), var(--c-acento) 55%, var(--c-acento-oscuro));
+  border-color: var(--c-acento-oscuro);
+}
+
+/* El No es un carrito: dos ruedas, se inclina al arrancar y deja huellas */
+.tema-rayo .btn-no { color: var(--c-tinta); border-color: var(--c-tinta); }
+.tema-rayo .btn-no::before,
+.tema-rayo .btn-no::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  width: 15px;
+  height: 15px;
+  border: 3.5px solid var(--c-llanta);
+  border-radius: 50%;
+  background: conic-gradient(var(--c-llanta) 0 25%, var(--c-rin) 0 50%, var(--c-llanta) 0 75%, var(--c-rin) 0);
+  box-sizing: border-box;
+}
+.tema-rayo .btn-no::before { left: 17%; }
+.tema-rayo .btn-no::after { right: 17%; }
+.tema-rayo .btn-no.volando { rotate: var(--inclinacion, 0deg); }
+.tema-rayo .btn-no.volando::before,
+.tema-rayo .btn-no.volando::after { animation: girar .22s linear infinite; }
+.tema-rayo .arena .btn {
+  transition: transform 480ms var(--rebote), rotate .22s ease, opacity .3s ease, background-color .2s ease;
+}
+
+/* Celebración a cuadros */
+.tema-rayo .destello {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: repeating-conic-gradient(var(--c-cuadro) 0 25%, var(--c-papel) 0 50%) 0 0 / 5px 5px;
+}
+.tema-rayo .destello:nth-child(3n) { width: 8px; height: 8px; background: var(--c-acento); }
+.tema-rayo .destello:nth-child(4n) { background: var(--c-lacre); }
+
+.tema-rayo .recorrido li::after { left: 9px; border-left: 3px dotted var(--c-acento); }
+.tema-rayo .recorrido li:last-child::before {
+  border: 0;
+  border-radius: 2px;
+  background: repeating-conic-gradient(var(--c-cuadro) 0 25%, var(--c-papel) 0 50%) 0 0 / 6px 6px;
+  box-shadow: 0 0 0 1px var(--c-cuadro);
 }
 
 /* ---------- Tarjeta neutra ---------- */
@@ -531,7 +902,13 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pantalla, .pantalla.saliendo { transform: none; transition: opacity .3s ease; }
-  .arena .btn { transition: opacity .15s linear; }
+  .arena .btn,
+  .tema-rayo .arena .btn { transition: opacity .15s linear; }
+  .tema-rayo .btn-no.volando { rotate: none; }
+  .largada__carro, .arranca .largada__carro { animation: none; }
+  .arranca .largada__carro { opacity: 0; transition: opacity .3s ease; }
+  .arranca .largada__carro::before, .arranca .largada__carro::after { animation: none; }
+  .largada__grito.entra { animation-name: aparecer; }
   .sobre, .sobre__hint { animation: none; }
   .sobre__solapa, .sobre__carta, .sello__mitad { transition: opacity .3s ease; }
   .sobre.abierto .sobre__solapa,

@@ -1,5 +1,5 @@
 /* Invita — lógica compartida de todas las invitaciones. Sin dependencias.
-   Flujo: SOBRE → PREGUNTA → PLAN → CONFIRMADO, una pantalla a la vez. */
+   Flujo: SOBRE → (LARGADA) → PREGUNTA → PLAN → CONFIRMADO, una pantalla a la vez. */
 (() => {
   'use strict';
 
@@ -11,10 +11,64 @@
     'Jajaja, ya se está cansando de huir',
     'Última oportunidad… mentira, tampoco',
   ];
-  const FRASE_FINAL = 'El No se rindió. Solo queda una opción 💛';
-  const RISAS = ['jaja', '😜'];
-  const TEMAS = ['personal', 'raices', 'curazaos'];
+  const TEMAS = ['personal', 'raices', 'curazaos', 'rayo'];
   const ZONA = 'America/Bogota';
+
+  /* Textos y efectos por tema: ESTILO_BASE vale para todos y cada tema cambia solo lo suyo. */
+  const ESTILO_BASE = {
+    sello: '',                  // texto del sello; vacío = inicial de quien invita
+    hint: 'Toca la carta',
+    grito: '',
+    risas: ['jaja', '😜'],
+    frasesNo: FRASES_NO,
+    fraseFinal: 'El No se rindió. Solo queda una opción 💛',
+    celebracion: 'Sabía que dirías que sí 💛',
+    eyebrowPlan: 'El plan',
+    etiquetaLugar: 'Dónde',
+    escogeHora: 'Escoge la hora',
+    confirmaHora: 'Confirma la hora',
+    confirmar: 'Confirmar',
+    eyebrowConfirmado: 'Es una cita',
+    saludo: 'Nos vemos, {nombre}',
+    inicioWhatsApp: '¡Sí! 💛',
+    largada: false,             // semáforo de largada entre el sobre y la pregunta
+    huellas: false,             // el No deja marcas de llanta al huir
+    velocimetro: null,          // { desde, hasta, texto } en el plan
+    carro: false,               // carro estacionado en la confirmación
+    motor: false,               // pitos y motor con Web Audio, sin archivos
+  };
+  const ESTILOS = {
+    rayo: {
+      sello: '95',
+      hint: 'Toca para arrancar',
+      grito: '¡Ka-chow!',
+      risas: ['💨', 'jaja'],
+      frasesNo: [
+        'Uy, casi 😏 Este No corre más que tú',
+        'Ni a 200 km/h lo alcanzas 🏎️',
+        'Ese No ya entró a pits',
+        'Mate dice que mejor le des al Sí',
+        'Ya me tienes derrapando por ti 😅',
+        'Soy velocidad… pero contigo voy despacio 💛',
+      ],
+      fraseFinal: 'El No se fue a pits y no volvió 🏁 Solo queda el Sí',
+      celebracion: '¡Ka-chow! Sabía que dirías que sí 💛',
+      eyebrowPlan: 'Hoja de carrera',
+      etiquetaLugar: 'Circuito',
+      escogeHora: 'Escoge la hora de largada',
+      confirmaHora: 'Hora de largada',
+      confirmar: '¡Arrancamos!',
+      eyebrowConfirmado: 'Bandera a cuadros',
+      saludo: 'Nos vemos en la pista, {nombre}',
+      inicioWhatsApp: '¡Ka-chow! ⚡',
+      largada: true,
+      huellas: true,
+      velocimetro: { desde: 200, hasta: 20, texto: 'Modo tranqui activado' },
+      carro: true,
+      motor: true,
+    },
+  };
+  let estilo = ESTILO_BASE;
 
   const app = document.getElementById('app');
   const consultaMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -35,8 +89,17 @@
     return n;
   }
 
+  // Igual que h(), pero para dibujos SVG.
+  function svg(tag, props = {}, ...hijos) {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(props)) if (v != null) n.setAttribute(k, v);
+    for (const c of hijos.flat()) if (c != null && c !== false) n.append(c);
+    return n;
+  }
+
   const primerNombre = (s = '') => s.trim().split(/\s+/)[0] || '';
   const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const minuscula = (s) => s.charAt(0).toLowerCase() + s.slice(1);
   const slugificar = (s = '') => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
@@ -48,9 +111,10 @@
     return `${p.weekday} ${p.day} de ${p.month}`;
   }
 
-  // "18:00" → "6:00 p. m."
+  // "18:00" → "6:00 p. m."; mediodía en punto → "12:00 m." (como se escribe en Colombia)
   function hora12(hhmm) {
     const [hh, mm] = hhmm.split(':').map(Number);
+    if (hh === 12 && mm === 0) return '12:00 m.';
     return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'a. m.' : 'p. m.'}`;
   }
 
@@ -73,15 +137,124 @@
   };
 
   function normalizar(c) {
-    return {
+    const tema = TEMAS.includes(c.tema) ? c.tema : 'personal';
+    const e = { ...ESTILO_BASE, ...ESTILOS[tema] };
+    const cita = {
       ...c,
+      tema,
       horarios: Array.isArray(c.horarios) ? c.horarios : [],
       duracion_horas: Number(c.duracion_horas) > 0 ? Number(c.duracion_horas) : 3,
-      tema: TEMAS.includes(c.tema) ? c.tema : 'personal',
-      frases_no: Array.isArray(c.frases_no) && c.frases_no.length ? c.frases_no : FRASES_NO,
+      frases_no: Array.isArray(c.frases_no) && c.frases_no.length ? c.frases_no : e.frasesNo,
+      recorrido: Array.isArray(c.recorrido) ? c.recorrido.filter((p) => typeof p === 'string' && p.trim()) : [],
       intentos_para_desaparecer: Number.isInteger(c.intentos_para_desaparecer) && c.intentos_para_desaparecer > 0
         ? c.intentos_para_desaparecer : 7,
     };
+    return { cita, estilo: e };
+  }
+
+  function vibrar(patron = 25) {
+    if (!navigator.vibrate || navigator.userActivation?.hasBeenActive === false) return;
+    try { navigator.vibrate(patron); } catch { /* sin vibración */ }
+  }
+
+  /* Pitos del semáforo y rugido de motor, sintetizados. Solo suenan si el tema lo pide
+     y después del primer toque (los navegadores no dejan sonar nada antes). */
+  const sonido = (() => {
+    let ctx = null;
+    function tono(frec, dur, vol, tipo = 'sine') {
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = tipo;
+      o.frequency.setValueAtTime(frec, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+    return {
+      preparar() {
+        if (ctx) return;
+        try {
+          const Contexto = window.AudioContext || window.webkitAudioContext;
+          if (Contexto) ctx = new Contexto();
+          ctx?.resume?.().catch(() => {});
+        } catch { ctx = null; }
+      },
+      pito(frec, dur = 0.16) {
+        if (!ctx) return;
+        try { tono(frec, dur, 0.06); } catch { /* sin sonido */ }
+      },
+      motor(dur = 1.4) {
+        if (!ctx) return;
+        try {
+          const t = ctx.currentTime;
+          const filtro = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          filtro.type = 'lowpass';
+          filtro.frequency.setValueAtTime(380, t);
+          filtro.frequency.linearRampToValueAtTime(1500, t + dur * 0.5);
+          filtro.frequency.linearRampToValueAtTime(600, t + dur);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.07, t + 0.09);
+          g.gain.setValueAtTime(0.07, t + dur * 0.55);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          for (const [tipo, mult, vol] of [['sawtooth', 1, 1], ['square', 0.5, 0.45]]) {
+            const o = ctx.createOscillator();
+            const v = ctx.createGain();
+            o.type = tipo;
+            o.frequency.setValueAtTime(46 * mult, t);
+            o.frequency.exponentialRampToValueAtTime(185 * mult, t + dur * 0.5);
+            o.frequency.exponentialRampToValueAtTime(110 * mult, t + dur);
+            v.gain.value = vol;
+            o.connect(v).connect(filtro);
+            o.start(t);
+            o.stop(t + dur + 0.05);
+          }
+          // Vibrato rápido: el "tra-tra-tra" del motor.
+          const lfo = ctx.createOscillator();
+          const profundidad = ctx.createGain();
+          lfo.frequency.setValueAtTime(16, t);
+          lfo.frequency.linearRampToValueAtTime(44, t + dur * 0.5);
+          profundidad.gain.value = 0.03;
+          lfo.connect(profundidad).connect(g.gain);
+          lfo.start(t);
+          lfo.stop(t + dur + 0.05);
+          filtro.connect(g).connect(ctx.destination);
+        } catch { /* sin sonido */ }
+      },
+    };
+  })();
+
+  /* Carro de carreras rojo con el 95 y el rayo, dibujado aquí mismo (sin imágenes). */
+  function carro() {
+    const rueda = (cx) => svg('g', { class: 'carro__rueda' },
+      svg('circle', { class: 'carro__llanta', cx, cy: 78, r: 17 }),
+      svg('circle', { class: 'carro__rin', cx, cy: 78, r: 9.5 }),
+      svg('path', { class: 'carro__rayos', d: `M${cx - 9} 78h18M${cx} 69v18` }),
+      svg('circle', { class: 'carro__centro', cx, cy: 78, r: 3 }));
+    const guardabarro = (cx) => svg('path', { class: 'carro__guardabarro', d: `M${cx - 21} 78a21 21 0 0 1 42 0z` });
+    return svg('svg', { class: 'carro', viewBox: '0 0 240 100', 'aria-hidden': 'true', focusable: 'false' },
+      svg('ellipse', { class: 'carro__sombra', cx: 126, cy: 95, rx: 106, ry: 5 }),
+      svg('path', { class: 'carro__aleron', d: 'M8 36h32v6H8zM19 41h6v10h-6z' }),
+      svg('path', {
+        class: 'carro__cuerpo',
+        d: 'M20 78L16 60C16 52 22 49 30 48L66 45C84 30 100 25 120 24L140 24C156 24 166 32 176 42L212 50C226 53 232 58 232 66L230 78Z',
+      }),
+      svg('path', { class: 'carro__brillo', d: 'M32 51L66 48C84 34 100 29 120 28L138 28' }),
+      svg('path', { class: 'carro__ventana', d: 'M78 46C92 35 105 31 120 31L134 31L132 44Z' }),
+      svg('path', { class: 'carro__rayo', d: 'M30 67L98 55L91 62L154 50L145 60L206 55L143 70L150 63L86 74L93 66Z' }),
+      svg('text', { class: 'carro__numero', x: 120, y: 69, 'text-anchor': 'middle' }, '95'),
+      svg('ellipse', { class: 'carro__ojo', cx: 155, cy: 38, rx: 10.5, ry: 7.5, transform: 'rotate(26 155 38)' }),
+      svg('circle', { class: 'carro__iris', cx: 159, cy: 39.5, r: 4.6 }),
+      svg('circle', { class: 'carro__pupila', cx: 160, cy: 39.5, r: 2.2 }),
+      svg('circle', { class: 'carro__luz-ojo', cx: 161.3, cy: 38, r: 1.1 }),
+      svg('ellipse', { class: 'carro__faro', cx: 221, cy: 57, rx: 5, ry: 3 }),
+      svg('path', { class: 'carro__boca', d: 'M201 66C209 72.5 222 72.5 230 64.5' }),
+      guardabarro(62), guardabarro(192),
+      rueda(62), rueda(192));
   }
 
   /* ---------- Transiciones entre pantallas ---------- */
@@ -113,7 +286,7 @@
   /* ---------- 1. Sobre ---------- */
 
   function pantallaSobre(c) {
-    const inicial = (c.de || '').trim().charAt(0).toUpperCase() || '♥';
+    const inicial = estilo.sello || (c.de || '').trim().charAt(0).toUpperCase() || '♥';
     const mitad = (lado) => h('span', { class: `sello__mitad sello__mitad--${lado}` },
       h('span', { class: 'sello__letra', text: inicial }));
     const sobre = h('button', { class: 'sobre', type: 'button', 'aria-label': 'Abrir la carta' },
@@ -123,18 +296,46 @@
       h('span', { class: 'sobre__solapa-wrap' }, h('span', { class: 'sobre__solapa' })),
       h('span', { class: 'sello', 'aria-hidden': 'true' }, mitad('izq'), mitad('der')));
     const pantalla = h('section', { class: 'pantalla pantalla--sobre' },
-      sobre, h('p', { class: 'sobre__hint', text: 'Toca la carta' }));
+      sobre, h('p', { class: 'sobre__hint', text: estilo.hint }));
 
     let abierto = false;
     sobre.addEventListener('click', async () => {
       if (abierto) return;
       abierto = true;
+      if (estilo.motor) sonido.preparar();
       sobre.classList.add('abierto');
       pantalla.classList.add('abriendo');
       await esperar(1950);
-      mostrarPregunta(c);
+      if (estilo.largada) mostrarLargada(c);
+      else mostrarPregunta(c);
     });
     return pantalla;
+  }
+
+  /* ---------- 1b. Largada: semáforo, grito y el carro que arranca ---------- */
+
+  async function mostrarLargada(c) {
+    const luces = [0, 1, 2].map(() => h('span', { class: 'luz' }));
+    const grito = h('p', { class: 'largada__grito', 'aria-live': 'polite' });
+    const pantalla = h('section', { class: 'pantalla pantalla--largada' },
+      h('div', { class: 'semaforo', role: 'img', 'aria-label': 'Semáforo de largada' }, luces),
+      grito,
+      h('div', { class: 'largada__pista', 'aria-hidden': 'true' }, h('div', { class: 'largada__carro' }, carro())));
+    await mostrar(pantalla);
+    await esperar(600);
+    for (const luz of luces) {
+      luz.classList.add('roja');
+      sonido.pito(520);
+      await esperar(560);
+    }
+    luces.forEach((l) => l.classList.replace('roja', 'verde'));
+    sonido.pito(880, 0.42);
+    sonido.motor();
+    vibrar([40, 30, 40, 30, 120]);
+    mostrarFrase(grito, estilo.grito);
+    pantalla.classList.add('arranca');
+    await esperar(1500);
+    mostrarPregunta(c);
   }
 
   /* ---------- 2. Pregunta ---------- */
@@ -181,9 +382,11 @@
     const VUELO = 480;         // lo que dura el salto (ver .arena .btn en styles.css)
 
     const st = { intentos: 0, rendido: false, ultima: -Infinity, ultimoConteo: -Infinity, W: 0, H: 0,
-      si: { x: 0, y: 0 }, no: { x: 0, y: 0 }, risa: 0, bloqueo: 0 };
+      si: { x: 0, y: 0 }, no: { x: 0, y: 0 }, risa: 0, bloqueo: 0, vuelo: 0 };
     const control = new AbortController();
     const opc = { signal: control.signal };
+    const capaHuellas = estilo.huellas ? svg('svg', { class: 'huellas', 'aria-hidden': 'true' }) : null;
+    if (capaHuellas) arena.prepend(capaHuellas);
 
     const escNo = () => Math.max(0.45, 1 - 0.1 * st.intentos);
     const escSi = () => Math.min(1.6, 1 + 0.08 * st.intentos);
@@ -250,7 +453,52 @@
       return mejor || { x: x1, y: y0 };
     }
 
+    /* Tema con huellas: el No se inclina como un carro que arranca y deja dos marcas
+       de llanta que siguen su posición real (rebote incluido) y luego se secan. */
+    function arrancar(desde, hasta) {
+      const dx = hasta.x - desde.x;
+      const dy = hasta.y - desde.y;
+      const largo = Math.hypot(dx, dy);
+      if (largo < 24) return;
+      no.style.setProperty('--inclinacion', `${dx >= 0 ? -7 : 7}deg`);
+      no.classList.add('volando');
+      clearTimeout(st.vuelo);
+      st.vuelo = setTimeout(() => no.classList.remove('volando'), VUELO * 0.75);
+
+      const sep = Math.max(6, Math.min(11, no.offsetHeight * escNo() * 0.24));
+      const nx = (-dy / largo) * sep;
+      const ny = (dx / largo) * sep;
+      const llantas = [svg('polyline'), svg('polyline')];
+      const polvo = [0, 1, 2].map((i) => svg('circle', {
+        class: 'polvo',
+        r: 7 - i * 1.5,
+        cx: (desde.x - (dx / largo) * (8 + i * 9) + (Math.random() - 0.5) * 10).toFixed(1),
+        cy: (desde.y - (dy / largo) * (8 + i * 9) + (Math.random() - 0.5) * 10).toFixed(1),
+        style: `animation-delay: ${i * 60}ms`,
+      }));
+      const grupo = svg('g', { class: 'huella' }, llantas, polvo);
+      capaHuellas.append(grupo);
+      const puntos = [[], []];
+      const a = arena.getBoundingClientRect();
+      const t0 = performance.now();
+      (function paso() {
+        if (!grupo.isConnected) return;
+        const r = no.getBoundingClientRect();
+        const cx = r.left + r.width / 2 - a.left;
+        const cy = r.top + r.height / 2 - a.top;
+        llantas.forEach((l, i) => {
+          const k = i ? 1 : -1;
+          puntos[i].push(`${(cx + nx * k).toFixed(1)},${(cy + ny * k).toFixed(1)}`);
+          l.setAttribute('points', puntos[i].join(' '));
+        });
+        if (performance.now() - t0 < VUELO + 80) requestAnimationFrame(paso);
+      }());
+      setTimeout(() => grupo.classList.add('seca'), VUELO + 700);
+      setTimeout(() => grupo.remove(), VUELO + 2300);
+    }
+
     function moverNo(x, y, animar) {
+      const antes = st.no;
       st.no = { x, y };
       const fn = () => aplicar(no, x, y, escNo());
       if (!animar) return sinTransicion(no, fn);
@@ -259,11 +507,12 @@
         setTimeout(() => { sinTransicion(no, fn); no.classList.remove('parpadeo'); }, 130);
         return undefined;
       }
+      if (capaHuellas) arrancar(antes, st.no);
       return fn();
     }
 
     function reir() {
-      no.textContent = RISAS[(st.intentos - 1) % RISAS.length];
+      no.textContent = estilo.risas[(st.intentos - 1) % estilo.risas.length];
       no.classList.add('riendo');
       clearTimeout(st.risa);
       st.risa = setTimeout(() => {
@@ -272,19 +521,21 @@
       }, 700);
     }
 
-    function vibrar() {
-      if (!navigator.vibrate || navigator.userActivation?.hasBeenActive === false) return;
-      try { navigator.vibrate(25); } catch { /* sin vibración */ }
+    // El No deja de existir para el usuario: sin foco, sin toques y desvaneciéndose.
+    function apagarNo() {
+      clearTimeout(st.risa);
+      clearTimeout(st.bloqueo);
+      if (document.activeElement === no) si.focus({ preventScroll: true });
+      no.style.pointerEvents = 'none';
+      no.tabIndex = -1;
+      no.setAttribute('aria-hidden', 'true');
+      no.classList.add('se-rinde');
     }
 
     function rendirse() {
       st.rendido = true;
-      clearTimeout(st.risa);
-      if (document.activeElement === no) si.focus({ preventScroll: true });
-      no.tabIndex = -1;
-      no.setAttribute('aria-hidden', 'true');
-      no.classList.add('se-rinde');
-      mostrarFrase(frase, FRASE_FINAL, true);
+      apagarNo();
+      mostrarFrase(frase, estilo.fraseFinal, true);
       setTimeout(() => {
         no.remove();
         colocarSi();
@@ -404,7 +655,8 @@
       terminar() {
         control.abort();
         observador.disconnect();
-        clearTimeout(st.risa);
+        // Ya dijo que sí: durante la celebración el No no se puede tocar.
+        apagarNo();
         return st.intentos;
       },
     };
@@ -413,7 +665,9 @@
   async function celebrar(si, tarjeta, frase) {
     si.classList.add('elegido');
     tarjeta.classList.add('celebra');
-    mostrarFrase(frase, 'Sabía que dirías que sí 💛', true);
+    mostrarFrase(frase, estilo.celebracion, true);
+    sonido.motor(1.1);
+    if (estilo.motor) vibrar([30, 40, 70]);
     if (!reducido()) {
       const rs = si.getBoundingClientRect();
       const rt = tarjeta.getBoundingClientRect();
@@ -439,8 +693,70 @@
 
   /* ---------- 3. Plan ---------- */
 
+  // Velocímetro que baja de "desde" a "hasta": el plan va sin afán.
+  function velocimetro({ desde, hasta, texto }) {
+    const tope = Math.max(20, Math.ceil(Math.max(desde, hasta) / 20) * 20);
+    const CX = 100;
+    const CY = 100;
+    const R = 80;
+    const punto = (v, r) => {
+      const a = Math.PI * (1 - v / tope);
+      return { x: (CX + r * Math.cos(a)).toFixed(1), y: (CY - r * Math.sin(a)).toFixed(1) };
+    };
+    const marcas = [];
+    for (let i = 0; i <= 20; i++) {
+      const v = (tope / 20) * i;
+      const a = punto(v, R - (i % 2 ? 6 : 11));
+      const b = punto(v, R);
+      marcas.push(svg('line', { class: i % 2 ? 'vel__marca' : 'vel__marca vel__marca--mayor', x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
+    }
+    const numeros = [0, tope / 2, tope].map((v) => {
+      const p = punto(v, R - 24);
+      return svg('text', { class: 'vel__numero', x: p.x, y: p.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, String(v));
+    });
+    const zona = punto(tope * 0.8, R);
+    const aguja = svg('g', { class: 'vel__aguja' },
+      svg('line', { x1: CX, y1: CY, x2: CX - R + 16, y2: CY }),
+      svg('circle', { cx: CX, cy: CY, r: 6 }));
+    const angulo = (v) => `rotate(${(v / tope) * 180}deg)`;
+    aguja.style.transform = angulo(desde);
+    const lectura = h('span', { class: 'vel__lectura', text: String(desde) });
+    const nodo = h('figure', { class: 'velocimetro', role: 'img', 'aria-label': `Velocímetro: baja de ${desde} a ${hasta} km/h. ${texto}` },
+      svg('svg', { viewBox: '0 0 200 110', 'aria-hidden': 'true', focusable: 'false' },
+        svg('path', { class: 'vel__arco', d: `M${CX - R} ${CY}A${R} ${R} 0 0 1 ${CX + R} ${CY}` }),
+        svg('path', { class: 'vel__zona', d: `M${zona.x} ${zona.y}A${R} ${R} 0 0 1 ${CX + R} ${CY}` }),
+        marcas, numeros, aguja),
+      h('p', { class: 'vel__cifra', 'aria-hidden': 'true' }, lectura, h('span', { text: 'km/h' })),
+      h('figcaption', { class: 'vel__texto', 'aria-hidden': 'true', text: texto }));
+
+    async function animar() {
+      await esperar(500);
+      const dur = reducido() ? 0 : 1900;
+      aguja.style.transition = dur ? `transform ${dur}ms cubic-bezier(.25, .8, .25, 1)` : 'none';
+      aguja.style.transform = angulo(hasta);
+      const t0 = performance.now();
+      (function paso() {
+        const p = dur ? Math.min(1, (performance.now() - t0) / dur) : 1;
+        lectura.textContent = String(Math.round(desde + (hasta - desde) * (1 - (1 - p) ** 3)));
+        if (p < 1) requestAnimationFrame(paso);
+        else nodo.classList.add('listo');
+      }());
+    }
+    return { nodo, animar };
+  }
+
+  // "Pits: cafés por descubrir" → etiqueta "Pits" + texto.
+  function recorrido(pasos) {
+    return h('div', { class: 'recorrido' },
+      h('p', { class: 'etiqueta', text: 'El recorrido' }),
+      h('ol', {}, pasos.map((p) => {
+        const m = /^([^:]{1,24}):\s+(.+)$/.exec(p.trim());
+        return h('li', {}, m ? [h('b', { text: m[1] }), h('span', { text: capitalizar(m[2]) })] : h('span', { text: p.trim() }));
+      })));
+  }
+
   function mostrarPlan(c, intentos) {
-    const confirmar = h('button', { class: 'btn btn-si btn-bloque', type: 'button', disabled: true, text: 'Confirmar' });
+    const confirmar = h('button', { class: 'btn btn-si btn-bloque', type: 'button', disabled: true, text: estilo.confirmar });
     let hora = null;
     const chips = c.horarios.map((hh) => {
       const input = h('input', { type: 'radio', name: 'hora', value: hh });
@@ -458,16 +774,19 @@
     });
     area.addEventListener('input', () => { contador.textContent = `${area.value.length}/200`; });
 
+    const vel = estilo.velocimetro && velocimetro(estilo.velocimetro);
     const tarjeta = h('article', { class: 'tarjeta tarjeta--plan' },
-      h('p', { class: 'eyebrow', text: 'El plan' }),
+      h('p', { class: 'eyebrow', text: estilo.eyebrowPlan }),
       h('h2', { class: 'titulo', tabindex: '-1', 'data-foco': true, text: c.plan_titulo }),
+      vel && vel.nodo,
       h('p', { class: 'descripcion', text: c.plan_descripcion }),
       h('dl', { class: 'detalles' },
         h('div', {}, h('dt', { text: 'Cuándo' }), h('dd', { class: 'plan-fecha', text: capitalizar(fechaLarga(c.fecha)) })),
-        c.lugar && h('div', {}, h('dt', { text: 'Dónde' }), h('dd', { text: c.lugar }))),
+        c.lugar && h('div', {}, h('dt', { text: estilo.etiquetaLugar }), h('dd', { text: c.lugar }))),
+      c.recorrido.length ? recorrido(c.recorrido) : null,
       c.pista && h('p', { class: 'pista' }, h('span', { class: 'etiqueta', text: 'Pista' }), c.pista),
       h('fieldset', { class: 'horarios' },
-        h('legend', { class: 'etiqueta', text: c.horarios.length > 1 ? 'Escoge la hora' : 'Confirma la hora' }),
+        h('legend', { class: 'etiqueta', text: c.horarios.length > 1 ? estilo.escogeHora : estilo.confirmaHora }),
         h('div', { class: 'chips' }, chips)),
       h('div', { class: 'campo' },
         h('label', { class: 'campo__label', for: 'mensaje', text: c.mensaje_placeholder || '¿Algo que quieras decirme?' }),
@@ -483,7 +802,7 @@
       mostrarConfirmado(c, respuesta);
     });
 
-    mostrar(h('section', { class: 'pantalla pantalla--plan' }, tarjeta));
+    mostrar(h('section', { class: 'pantalla pantalla--plan' }, tarjeta), () => vel && vel.animar());
   }
 
   /* ---------- 4. Confirmado ---------- */
@@ -493,9 +812,9 @@
     const intentos = n === 0
       ? 'Ni intenté decir que no 😌'
       : `Intenté decir que no ${n} ${n === 1 ? 'vez' : 'veces'} 😂`;
-    // "6:00 p. m." ya termina en punto: no se agrega otro.
-    const hora = hora12(r.hora).replace(/\.$/, '');
-    let m = `¡Sí! 💛 Nos vemos el ${fechaLarga(c.fecha)} a las ${hora}. ${intentos}`;
+    // "6:00 p. m." ya termina en punto: al final de la frase no se agrega otro.
+    const cuando = c.momento ? `${hora12(r.hora)}, ${minuscula(c.momento)}` : hora12(r.hora);
+    let m = `${estilo.inicioWhatsApp} Nos vemos el ${fechaLarga(c.fecha)} a las ${cuando.replace(/\.$/, '')}. ${intentos}`;
     if (r.mensaje) m += `\n\n${r.mensaje}`;
     return m;
   }
@@ -503,7 +822,13 @@
   const enlaceWhatsApp = (c, r) => `https://api.whatsapp.com/send?phone=${c.whatsapp_destino}&text=${encodeURIComponent(mensajeWhatsApp(c, r))}`;
 
   const tituloEvento = (c) => (c.de ? `${c.plan_titulo} con ${primerNombre(c.de)}` : c.plan_titulo);
-  const detallesEvento = (c) => [c.plan_descripcion, c.pista && `Pista: ${c.pista}`, c.cierre].filter(Boolean).join('\n\n');
+  const detallesEvento = (c) => [
+    c.plan_descripcion,
+    c.momento,
+    c.recorrido.map((p) => `• ${p}`).join('\n'),
+    c.pista && `Pista: ${c.pista}`,
+    c.cierre,
+  ].filter(Boolean).join('\n\n');
 
   // Hora de pared en Bogotá → "20261008T180000" (se calcula en UTC solo para sumar sin desfases).
   function marcas(c, hora) {
@@ -585,11 +910,13 @@
     const calendario = h('button', { class: 'btn btn-borde btn-bloque', type: 'button', text: 'Añadir a mi calendario' });
     calendario.addEventListener('click', () => descargarICS(c, r));
     const tarjeta = h('article', { class: 'tarjeta tarjeta--confirmado' },
-      h('p', { class: 'eyebrow', text: 'Es una cita' }),
-      h('h2', { class: 'titulo', tabindex: '-1', 'data-foco': true, text: `Nos vemos, ${primerNombre(c.para)}` }),
+      estilo.carro && h('div', { class: 'confirmado__carro', 'aria-hidden': 'true' }, carro()),
+      h('p', { class: 'eyebrow', text: estilo.eyebrowConfirmado }),
+      h('h2', { class: 'titulo', tabindex: '-1', 'data-foco': true, text: estilo.saludo.replace('{nombre}', primerNombre(c.para)) }),
       h('p', { class: 'resumen' },
         h('span', { class: 'resumen__fecha', text: capitalizar(fechaLarga(c.fecha)) }),
-        h('span', { class: 'resumen__hora', text: hora12(r.hora) })),
+        h('span', { class: 'resumen__hora', text: hora12(r.hora) }),
+        c.momento && h('span', { class: 'resumen__momento', text: c.momento })),
       c.lugar && h('p', { class: 'resumen__lugar', text: c.lugar }),
       c.cierre && h('p', { class: 'cierre', text: c.cierre }),
       c.de && h('p', { class: 'firma', text: `— ${c.de}` }),
@@ -616,7 +943,7 @@
     try {
       const r = await fetch(new URL('cita.json', carpeta()), { cache: 'no-cache' });
       if (!r.ok) throw new Error(String(r.status));
-      cita = normalizar(await r.json());
+      ({ cita, estilo } = normalizar(await r.json()));
     } catch {
       mostrar(pantallaVacia('Esta carta no se pudo abrir. Intenta de nuevo en un momento.'));
       return;
@@ -627,6 +954,7 @@
     // Gancho de solo lectura para las pruebas automáticas (scripts/probar.mjs).
     window.__invita = {
       cita,
+      estilo,
       generarICS: (r) => generarICS(cita, r || guardado.leer()),
       mensajeWhatsApp: (r) => mensajeWhatsApp(cita, r || guardado.leer()),
     };

@@ -8,12 +8,23 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+// Chrome del Mac, o Chromium en Linux (incluido el de las sesiones en la nube).
+const CHROME = process.env.CHROME || [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/opt/pw-browsers/chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+].find((p) => existsSync(p));
+if (!CHROME) { console.error('No encontré Chrome ni Chromium. Pasa la ruta con CHROME=/ruta/al/navegador'); process.exit(1); }
+// Como root (contenedores) Chromium no arranca con sandbox.
+const FLAGS_LINUX = process.platform === 'linux' ? ['--disable-dev-shm-usage', ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])] : [];
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const slug = process.argv[2] || (await readdir(path.join(RAIZ, 'c'))).find((d) => !d.startsWith('.'));
@@ -40,7 +51,7 @@ const URL_CITA = `http://127.0.0.1:${servidor.address().port}/c/${slug}/`;
 /* ---------- Chrome + CDP ---------- */
 const perfil = await mkdtemp(path.join(tmpdir(), 'invita-chrome-'));
 const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${perfil}`,
-  '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  '--no-first-run', '--no-default-browser-check', ...FLAGS_LINUX, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
 const wsNavegador = await new Promise((resolve, reject) => {
   let buf = '';
   chrome.stderr.on('data', (d) => {
@@ -131,7 +142,7 @@ const GEOMETRIA = `(() => {
   const enSi = si ? document.elementFromPoint(si.cx, si.cy) : null;
   return { no: r('.arena .btn-no'), si, arena: r('.arena'), tarjeta: r('.pantalla--pregunta .tarjeta'),
     frase: document.querySelector('.frase')?.textContent || '', textoNo: document.querySelector('.arena .btn-no')?.textContent,
-    siArriba: !!enSi && !!enSi.closest('.btn-si'), clicksNo: window.__t?.clicksNo ?? -1 };
+    siArriba: !!enSi && !!enSi.closest('.btn-si'), clicksNo: window.__t?.clicksNo ?? -1, clicksSi: window.__t?.clicksSi ?? -1 };
 })()`;
 const geo = () => ev(GEOMETRIA);
 const dentroDe = (a, b, tol = 0.75) => a.l >= b.l - tol && a.t >= b.t - tol && a.r <= b.r + tol && a.b <= b.b + tol;
@@ -157,7 +168,10 @@ async function clicRaton(x, y) {
 async function irAPregunta(conToque) {
   const s = await ev('(() => { const b = document.querySelector(".sobre").getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })()');
   if (conToque) await tocar(s.x, s.y); else await clicRaton(s.x, s.y);
-  const llego = await esperarA('!!document.querySelector(".pantalla--pregunta.visible .arena.lista")', 6000);
+  if ((await ev('__invita.estilo')).largada) {
+    verificar(await esperarA('!!document.querySelector(".pantalla--largada .luz.verde")', 7000), 'no se vio el semáforo en verde');
+  }
+  const llego = await esperarA('!!document.querySelector(".pantalla--pregunta.visible .arena.lista")', 11000);
   await dormir(700);
   await ev(`window.__t = { clicksNo: 0, clicksSi: 0 };
     document.addEventListener('click', (e) => {
@@ -188,9 +202,8 @@ async function escenarioToques({ ancho, alto, completo }) {
   revisarGeometria(g, 'inicio');
   verificar(g.arena.b - g.arena.t >= 180, `la arena mide ${g.arena.b - g.arena.t}px (< 180)`);
 
-  const frases = cita.frases_no?.length ? cita.frases_no : [
-    'Uy, casi 😏', 'Ese botón es más rápido que tú, jajaja', 'Inténtalo otra vez… él no quiere',
-    'El botón ya decidió por ti', 'Jajaja, ya se está cansando de huir', 'Última oportunidad… mentira, tampoco'];
+  const estilo = await ev('__invita.estilo');
+  const frases = cita.frases_no?.length ? cita.frases_no : estilo.frasesNo;
 
   for (let n = 1; n <= limite; n++) {
     g = await geo();
@@ -205,7 +218,10 @@ async function escenarioToques({ ancho, alto, completo }) {
       const m = await geo();
       if (m.no) verificar(dentroDe(m.no, m.tarjeta), `intento ${n} (vuelo ${t}ms): el No se asomó fuera de la tarjeta`);
       verificar(m.siArriba, `intento ${n} (vuelo ${t}ms): algo tapó el Sí`);
-      if (n < limite && t === 60) verificar(['jaja', '😜'].includes(m.textoNo), `intento ${n}: el No no se rió (dice "${m.textoNo}")`);
+      if (n < limite && t === 150 && estilo.huellas) {
+        verificar(await ev('[...document.querySelectorAll(".huellas polyline")].some(p => p.points.length > 2)'), `intento ${n}: el No no dejó huellas`);
+      }
+      if (n < limite && t === 60) verificar(estilo.risas.includes(m.textoNo), `intento ${n}: el No no se rió (dice "${m.textoNo}")`);
     }
     await dormir(n === limite ? 1300 : 1250);  // > LECTURA (1200 ms) entre intentos contados
     g = await geo();
@@ -215,7 +231,7 @@ async function escenarioToques({ ancho, alto, completo }) {
       verificar(g.frase === frases[Math.min(n, frases.length) - 1], `intento ${n}: frase "${g.frase}"`);
     } else {
       verificar(g.no === null, `intento ${n}: el No debía desaparecer`);
-      verificar(g.frase === 'El No se rindió. Solo queda una opción 💛', `frase final: "${g.frase}"`);
+      verificar(g.frase === estilo.fraseFinal, `frase final: "${g.frase}"`);
     }
   }
   await dormir(800);
@@ -232,6 +248,15 @@ async function escenarioToques({ ancho, alto, completo }) {
   verificar((await ev('__t.clicksSi')) === 1, 'el toque al Sí no generó exactamente un click (control positivo)');
   const fechaPlan = await ev('document.querySelector(".plan-fecha").textContent');
   ok(`plan: fecha "${fechaPlan}"`);
+  if (estilo.velocimetro) {
+    verificar(await esperarA('!!document.querySelector(".velocimetro.listo")', 5000), 'el velocímetro no terminó de bajar');
+    const lectura = await ev('document.querySelector(".vel__lectura").textContent');
+    verificar(lectura === String(estilo.velocimetro.hasta), `el velocímetro quedó en ${lectura}`);
+    ok(`velocímetro: ${estilo.velocimetro.desde} → ${lectura} km/h`);
+  }
+  const pasos = await ev('[...document.querySelectorAll(".recorrido li")].map(li => li.textContent)');
+  verificar(pasos.length === (cita.recorrido?.length || 0), `el recorrido muestra ${pasos.length} pasos`);
+  if (pasos.length) ok(`recorrido: ${pasos.length} pasos`);
   verificar(await ev('document.querySelector(".pantalla--plan .btn-si").disabled'), 'Confirmar debería empezar deshabilitado');
   verificar((await ev('[...document.querySelectorAll(".chip span")].map(s => s.textContent).join("|")')) ===
     cita.horarios.map(h12).join('|'), 'los chips no están en formato 12 h');
@@ -245,11 +270,17 @@ async function escenarioToques({ ancho, alto, completo }) {
   // WhatsApp
   const href = await ev('document.querySelector(".btn-whatsapp").href');
   const u = new URL(href);
-  const esperado = `¡Sí! 💛 Nos vemos el ${fechaES(cita.fecha)} a las ${h12(cita.horarios[0]).replace(/\.$/, '')}. Intenté decir que no ${limite} ${limite === 1 ? 'vez' : 'veces'} 😂\n\nMi lugar favorito es Crepes & Waffles; ¿vale?`;
+  const cuando = cita.momento ? `${h12(cita.horarios[0])}, ${cita.momento.charAt(0).toLowerCase()}${cita.momento.slice(1)}` : h12(cita.horarios[0]);
+  const esperado = `${estilo.inicioWhatsApp} Nos vemos el ${fechaES(cita.fecha)} a las ${cuando.replace(/\.$/, '')}. Intenté decir que no ${limite} ${limite === 1 ? 'vez' : 'veces'} 😂\n\nMi lugar favorito es Crepes & Waffles; ¿vale?`;
   verificar(u.origin + u.pathname === 'https://api.whatsapp.com/send' && u.searchParams.get('phone') === cita.whatsapp_destino, `destino de WhatsApp: ${href.split('&text')[0]}`);
-  verificar(!href.includes('%EF%BF%BD') && href.includes('%F0%9F%92%9B'), 'los emojis del enlace de WhatsApp no van bien codificados');
+  verificar(!href.includes('%EF%BF%BD') && href.includes(encodeURIComponent('😂')), 'los emojis del enlace de WhatsApp no van bien codificados');
   verificar(u.searchParams.get('text') === esperado, `mensaje de WhatsApp:\n${u.searchParams.get('text')}\n≠\n${esperado}`);
   console.log(`  ✓ WhatsApp → ${href.split('&text')[0]}\n    «${u.searchParams.get('text').replace(/\n/g, '⏎')}»`);
+
+  if (cita.momento) {
+    verificar((await ev('document.querySelector(".resumen__momento")?.textContent')) === cita.momento, 'el resumen no muestra el momento');
+    ok(`resumen: ${await ev('document.querySelector(".resumen").innerText.replace(/\\n/g, " · ")')}`);
+  }
 
   // ICS
   const ics = await ev('__invita.generarICS()');
@@ -383,15 +414,29 @@ async function escenarioRafaga() {
   await ventana({ ancho: 360, alto: 740, movil: true });
   await abrirLimpio();
   await irAPregunta(true);
+  let cayoEnSi = false;
   for (let i = 0; i < 40; i++) {
     const g = await geo();
-    if (!g.no) break;
+    if (!g.no || !g.si) break;
     await tocar(g.no.cx, g.no.cy, 30);
     await dormir(60 + Math.random() * 200);
     const m = await geo();
     verificar(m.clicksNo === 0, `ráfaga ${i}: click en el No`);
+    if (m.clicksSi > 0) { cayoEnSi = true; break; }
     verificar(m.siArriba, `ráfaga ${i}: algo tapa el Sí`);
     if (m.no) verificar(dentroDe(m.no, m.tarjeta), `ráfaga ${i}: el No fuera de la tarjeta`);
+  }
+  if (cayoEnSi) {
+    // Seguir tocando el No mientras celebra: ya no debe recibir nada.
+    for (let i = 0; i < 4; i++) {
+      const g = await geo();
+      if (g.no) await tocar(g.no.cx, g.no.cy, 30);
+      await dormir(120);
+    }
+    verificar((await geo()).clicksNo === 0, 'tras el Sí, el No recibió un click durante la celebración');
+    verificar(await esperarA('!!document.querySelector(".pantalla--plan.visible")', 5000), 'el Sí de la ráfaga no llevó al plan');
+    ok('ráfaga: un toque cayó en el Sí (aceptó); el No, 0 clicks incluso celebrando');
+    return;
   }
   await dormir(800);
   revisarGeometria(await geo(), 'tras la ráfaga');
@@ -406,6 +451,7 @@ function fechaES(iso) {
 }
 function h12(hhmm) {
   const [hh, mm] = hhmm.split(':').map(Number);
+  if (hh === 12 && mm === 0) return '12:00 m.';
   return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'a. m.' : 'p. m.'}`;
 }
 

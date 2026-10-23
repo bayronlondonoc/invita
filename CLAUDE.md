@@ -13,7 +13,8 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 - La raíz (`/`) y `404.html` muestran una tarjeta neutra ("Aquí no hay nada… todavía"). Nunca un listado de invitaciones.
 - Todas las páginas llevan `<meta name="robots" content="noindex, nofollow">`.
 - Vista previa de WhatsApp genérica e igual para todas: "Tienes una carta 💌" / "Ábrela con calma" + `og.png` (fuente en `scripts/og.html`).
-- Colores solo con variables CSS; temas por clase en `<body>`: `tema-personal` (por defecto), `tema-raices`, `tema-curazaos` (valores provisionales con TODO).
+- Colores solo con variables CSS; temas por clase en `<body>`: `tema-personal` (por defecto), `tema-raices`, `tema-curazaos` (valores provisionales con TODO), `tema-rayo`.
+- Los textos y efectos de cada tema viven en `ESTILOS` de `assets/app.js`. `rayo` (Gran Premio, estilo Rayo McQueen): sobre rojo con sello 95, semáforo de largada con "¡Ka-chow!", el No es un carrito que deja huellas de llanta, velocímetro de 200 a 20 km/h en el plan y sonido de motor. Todo dibujado en el código: nunca imágenes ni logos oficiales de Disney/Pixar (el repo es público).
 - Mobile-first: casi todas se abren desde WhatsApp. Probar a 360 px.
 - Textos en español de Colombia, con tuteo. Nada de "apetece" ni "coge".
 - **Nunca inventes datos de una cita** (nombres, fechas, horas, lugares, números). Si falta algo obligatorio, pregúntalo.
@@ -32,8 +33,10 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 | `whatsapp_destino` | (default) | Celular con 57. Sale de `config/defaults.json` si no viene. |
 | `duracion_horas` | no | Por defecto 3. |
 | `pista`, `lugar`, `cierre` | no | Texto libre. |
+| `momento` | no | Va junto a la hora en el resumen final, el WhatsApp y el calendario (ej. "Después de la iglesia"). |
+| `recorrido` | no | Lista de pasos del plan. "Etiqueta: texto" se muestra con la etiqueta arriba (ej. `["Pits: cafés de montaña", "Último tramo: lodo"]`). |
 | `mensaje_placeholder` | no | Pregunta que se le hace en el campo de mensaje (ej. "¿Cuál es tu lugar favorito para cenar?"). |
-| `tema` | no | `personal` (defecto), `raices`, `curazaos`. |
+| `tema` | no | `personal` (defecto), `raices`, `curazaos`, `rayo`. |
 | `frases_no` | no | Frases al esquivar el No, en orden. |
 | `intentos_para_desaparecer` | no | Por defecto 7. |
 
@@ -51,6 +54,7 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 ## Comandos útiles
 
 - Servidor local: `python3 -m http.server 8765` y abrir `http://127.0.0.1:8765/c/<slug>/`
-- Pruebas headless (Chrome por CDP, sin dependencias): `node scripts/probar.mjs [slug]`
+- Pruebas headless (Chrome por CDP, sin dependencias): `node scripts/probar.mjs [slug]`. Usa el Chrome del Mac o Chromium en Linux (en la nube, `/opt/pw-browsers/chromium`); otra ruta con `CHROME=...`.
+- En la nube no hay `gh` ni acceso a `*.github.io`: el deploy se verifica con las GitHub Actions del repo ("pages build and deployment") y, si el entorno permite el dominio, con `curl`.
 - Regenerar `og.png`: ver el comentario al inicio de `scripts/og.html`.
 - Para volver a ver una invitación ya respondida en el mismo dispositivo: borrar `localStorage` (clave `invita:<slug>`).
