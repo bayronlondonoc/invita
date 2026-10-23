@@ -1,0 +1,33 @@
+{
+  "para": "Manuela Hincapié",
+  "de": "Bayron Londoño",
+  "pregunta": "¿Quieres rodar conmigo hasta Santa Elena?",
+  "plan_titulo": "Gran Premio Santa Elena",
+  "plan_descripcion": "Una carrera al revés: aquí gana el que va más despacio. Subimos a Santa Elena en modo tranqui, a hablar sin afán y a descubrir cafés de montaña. Y después… buscamos lodo 🏁",
+  "fecha": "2026-10-25",
+  "horarios": [
+    "12:00"
+  ],
+  "duracion_horas": 3,
+  "pista": "Hasta Rayo McQueen aprendió que lo bueno no es llegar primero, sino disfrutar el camino.",
+  "lugar": "Santa Elena",
+  "momento": "Después de la iglesia",
+  "recorrido": [
+    "Largada: subimos a Santa Elena, sin afán",
+    "Pits: cafés de montaña por descubrir",
+    "Último tramo: buscamos lodo"
+  ],
+  "cierre": "Sin afán y sin reloj. Lo que haya que hablar, lo hablamos con café ☕",
+  "mensaje_placeholder": "¿Cómo te gusta el café?",
+  "whatsapp_destino": "573122738001",
+  "tema": "rayo",
+  "frases_no": [
+    "Uy, casi 😏 Pero este No es más rápido que tú",
+    "Ni Rayo McQueen lo alcanza… y tú vas a pie 😂",
+    "Insistes mucho… me gusta 😎",
+    "Pista cerrada para el No. Desvío obligatorio por el Sí 🚧"
+  ],
+  "frase_final": "El No se retiró de la carrera 🏁 Ahora sí, te toca 😏",
+  "intentos_para_desaparecer": 5,
+  "no_obligatorio": true
+}
