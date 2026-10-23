@@ -22,6 +22,7 @@
     risas: ['jaja', '😜'],
     frasesNo: FRASES_NO,
     fraseFinal: 'El No se rindió. Solo queda una opción 💛',
+    siAntes: 'Uy, ¿tan rápido? 😏 Primero intenta con el No',   // con "no_obligatorio"
     celebracion: 'Sabía que dirías que sí 💛',
     eyebrowPlan: 'El plan',
     etiquetaLugar: 'Dónde',
@@ -52,7 +53,7 @@
         'Soy velocidad… pero contigo voy despacio 💛',
       ],
       fraseFinal: 'El No se fue a pits y no volvió 🏁 Solo queda el Sí',
-      celebracion: '¡Ka-chow! Sabía que dirías que sí 💛',
+      celebracion: '¡Ka-chow! Sabía que dirías que sí 😎',
       eyebrowPlan: 'Hoja de carrera',
       etiquetaLugar: 'Circuito',
       escogeHora: 'Escoge la hora de largada',
@@ -146,6 +147,8 @@
       duracion_horas: Number(c.duracion_horas) > 0 ? Number(c.duracion_horas) : 3,
       frases_no: Array.isArray(c.frases_no) && c.frases_no.length ? c.frases_no : e.frasesNo,
       recorrido: Array.isArray(c.recorrido) ? c.recorrido.filter((p) => typeof p === 'string' && p.trim()) : [],
+      frase_final: typeof c.frase_final === 'string' && c.frase_final.trim() ? c.frase_final : e.fraseFinal,
+      no_obligatorio: c.no_obligatorio === true,
       intentos_para_desaparecer: Number.isInteger(c.intentos_para_desaparecer) && c.intentos_para_desaparecer > 0
         ? c.intentos_para_desaparecer : 7,
     };
@@ -360,6 +363,11 @@
     let aceptado = false;
     si.addEventListener('click', async () => {
       if (aceptado || !juego) return;
+      // Con "no_obligatorio" el Sí solo vale cuando el No ya se rindió.
+      if (c.no_obligatorio && !juego.rendido()) {
+        juego.frenarSi();
+        return;
+      }
       aceptado = true;
       const intentos = juego.terminar();
       await celebrar(si, tarjeta, frase);
@@ -535,7 +543,7 @@
     function rendirse() {
       st.rendido = true;
       apagarNo();
-      mostrarFrase(frase, estilo.fraseFinal, true);
+      mostrarFrase(frase, cita.frase_final, true);
       setTimeout(() => {
         no.remove();
         colocarSi();
@@ -652,6 +660,13 @@
     document.fonts?.ready.then(acomodar);
 
     return {
+      rendido: () => st.rendido,
+      frenarSi() {
+        si.classList.remove('frena');
+        void si.offsetWidth;
+        si.classList.add('frena');
+        mostrarFrase(frase, estilo.siAntes);
+      },
       terminar() {
         control.abort();
         observador.disconnect();
@@ -663,6 +678,7 @@
   }
 
   async function celebrar(si, tarjeta, frase) {
+    si.classList.remove('frena');
     si.classList.add('elegido');
     tarjeta.classList.add('celebra');
     mostrarFrase(frase, estilo.celebracion, true);

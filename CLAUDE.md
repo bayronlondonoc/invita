@@ -38,6 +38,8 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 | `mensaje_placeholder` | no | Pregunta que se le hace en el campo de mensaje (ej. "¿Cuál es tu lugar favorito para cenar?"). |
 | `tema` | no | `personal` (defecto), `raices`, `curazaos`, `rayo`. |
 | `frases_no` | no | Frases al esquivar el No, en orden. |
+| `frase_final` | no | Frase cuando el No se rinde y desaparece (por defecto, la del tema). |
+| `no_obligatorio` | no | `true`: el Sí no funciona hasta que el No se rinda (tiene que intentarlo `intentos_para_desaparecer` veces). |
 | `intentos_para_desaparecer` | no | Por defecto 7. |
 
 ## Procedimiento para una cita nueva (`/cita`)

@@ -23,10 +23,10 @@ const ALFABETO = 'abcdefghjkmnpqrstuvwxyz23456789';   // sin 0/o/1/l/i para que 
 const CAMPOS = [
   'para', 'de', 'pregunta', 'plan_titulo', 'plan_descripcion', 'fecha', 'horarios', 'duracion_horas',
   'pista', 'lugar', 'momento', 'recorrido', 'cierre', 'mensaje_placeholder', 'whatsapp_destino', 'tema', 'frases_no',
-  'intentos_para_desaparecer',
+  'frase_final', 'intentos_para_desaparecer', 'no_obligatorio',
 ];
 const OBLIGATORIOS = ['para', 'de', 'pregunta', 'plan_titulo', 'plan_descripcion', 'fecha', 'horarios', 'whatsapp_destino'];
-const TEXTOS_OPCIONALES = ['pista', 'lugar', 'momento', 'cierre', 'mensaje_placeholder'];
+const TEXTOS_OPCIONALES = ['pista', 'lugar', 'momento', 'cierre', 'mensaje_placeholder', 'frase_final'];
 
 const slugificar = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -116,6 +116,10 @@ function validar(entrada, defaults) {
       c.recorrido = c.recorrido.map((p) => p.trim());
       if (c.recorrido.length > 6) avisos.push('"recorrido" tiene más de 6 pasos; en el celular se hace largo.');
     }
+  }
+
+  if (c.no_obligatorio !== undefined && typeof c.no_obligatorio !== 'boolean') {
+    errores.push('"no_obligatorio" debe ser true o false');
   }
 
   if (c.momento && c.momento.length > 40) avisos.push('"momento" es largo; va junto a la hora, mejor algo corto.');

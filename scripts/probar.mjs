@@ -142,7 +142,8 @@ const GEOMETRIA = `(() => {
   const enSi = si ? document.elementFromPoint(si.cx, si.cy) : null;
   return { no: r('.arena .btn-no'), si, arena: r('.arena'), tarjeta: r('.pantalla--pregunta .tarjeta'),
     frase: document.querySelector('.frase')?.textContent || '', textoNo: document.querySelector('.arena .btn-no')?.textContent,
-    siArriba: !!enSi && !!enSi.closest('.btn-si'), clicksNo: window.__t?.clicksNo ?? -1, clicksSi: window.__t?.clicksSi ?? -1 };
+    siArriba: !!enSi && !!enSi.closest('.btn-si'), clicksNo: window.__t?.clicksNo ?? -1, clicksSi: window.__t?.clicksSi ?? -1,
+    noRendido: !!document.querySelector('.arena .btn-no.se-rinde') };
 })()`;
 const geo = () => ev(GEOMETRIA);
 const dentroDe = (a, b, tol = 0.75) => a.l >= b.l - tol && a.t >= b.t - tol && a.r <= b.r + tol && a.b <= b.b + tol;
@@ -205,6 +206,16 @@ async function escenarioToques({ ancho, alto, completo }) {
   const estilo = await ev('__invita.estilo');
   const frases = cita.frases_no?.length ? cita.frases_no : estilo.frasesNo;
 
+  if (cita.no_obligatorio) {
+    // El Sí antes de tiempo no avanza: primero tiene que intentar el No.
+    await tocarSelector('.arena .btn-si');
+    await dormir(900);
+    verificar(!(await ev('!!document.querySelector(".pantalla--plan, .btn-si.elegido")')), 'con no_obligatorio, el Sí antes de tiempo fue aceptado');
+    verificar((await geo()).frase === estilo.siAntes, 'el Sí antes de tiempo no mostró su frase');
+    await ev('__t.clicksSi = 0; true');
+    ok('Sí antes de tiempo: no avanza, primero el No');
+  }
+
   for (let n = 1; n <= limite; n++) {
     g = await geo();
     const antes = g.no;
@@ -231,7 +242,7 @@ async function escenarioToques({ ancho, alto, completo }) {
       verificar(g.frase === frases[Math.min(n, frases.length) - 1], `intento ${n}: frase "${g.frase}"`);
     } else {
       verificar(g.no === null, `intento ${n}: el No debía desaparecer`);
-      verificar(g.frase === estilo.fraseFinal, `frase final: "${g.frase}"`);
+      verificar(g.frase === (cita.frase_final || estilo.fraseFinal), `frase final: "${g.frase}"`);
     }
   }
   await dormir(800);
@@ -422,7 +433,11 @@ async function escenarioRafaga() {
     await dormir(60 + Math.random() * 200);
     const m = await geo();
     verificar(m.clicksNo === 0, `ráfaga ${i}: click en el No`);
-    if (m.clicksSi > 0) { cayoEnSi = true; break; }
+    if (await ev('!!document.querySelector(".btn-si.elegido, .pantalla--plan")')) {
+      if (cita.no_obligatorio) verificar(!g.no || g.noRendido, `ráfaga ${i}: el Sí se aceptó antes de que el No se rindiera`);
+      cayoEnSi = true;
+      break;
+    }
     verificar(m.siArriba, `ráfaga ${i}: algo tapa el Sí`);
     if (m.no) verificar(dentroDe(m.no, m.tarjeta), `ráfaga ${i}: el No fuera de la tarjeta`);
   }
