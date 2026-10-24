@@ -14,7 +14,7 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 - Todas las páginas llevan `<meta name="robots" content="noindex, nofollow">`.
 - Vista previa de WhatsApp genérica e igual para todas: "Tienes una carta 💌" / "Ábrela con calma" + `og.png` (fuente en `scripts/og.html`).
 - Colores solo con variables CSS; temas por clase en `<body>`: `tema-personal` (por defecto), `tema-raices`, `tema-curazaos` (valores provisionales con TODO), `tema-rayo`.
-- Los textos y efectos de cada tema viven en `ESTILOS` de `assets/app.js`. `rayo` (Gran Premio, estilo Rayo McQueen): sobre rojo con sello 95, semáforo de largada con "¡Ka-chow!", el No es un carrito que deja huellas de llanta, velocímetro de 200 a 20 km/h en el plan y sonido de motor. Todo dibujado en el código: nunca imágenes ni logos oficiales de Disney/Pixar (el repo es público).
+- Los textos y efectos de cada tema viven en `ESTILOS` de `assets/app.js`. `rayo` (Gran Premio, estilo Rayo McQueen): sobre rojo con sello 95, semáforo de largada con "¡Ka-chow!", en vez de botones, el No es el carro visto desde arriba (placa "No" en el techo) que baja por una carretera de curvas sin fin y esquiva cada intento con derrape, chirrido y huellas; al rendirse suelta la placa y llega a la línea de meta, donde aparece el Sí. Velocímetro de 200 a 20 km/h en el plan y sonidos sintetizados (suenan aunque el iPhone esté en silencio). Todo dibujado en el código: nunca imágenes ni logos oficiales de Disney/Pixar (el repo es público).
 - Mobile-first: casi todas se abren desde WhatsApp. Probar a 360 px.
 - Textos en español de Colombia, con tuteo. Nada de "apetece" ni "coge".
 - **Nunca inventes datos de una cita** (nombres, fechas, horas, lugares, números). Si falta algo obligatorio, pregúntalo.

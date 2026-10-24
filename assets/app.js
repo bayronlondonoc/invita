@@ -33,7 +33,8 @@
     saludo: 'Nos vemos, {nombre}',
     inicioWhatsApp: '¡Sí! 💛',
     largada: false,             // semáforo de largada entre el sobre y la pregunta
-    huellas: false,             // el No deja marcas de llanta al huir
+    carretera: false,           // el No es un carro que baja por una vía sin fin hasta la meta del Sí
+    carreteraHint: '',
     velocimetro: null,          // { desde, hasta, texto } en el plan
     carro: false,               // carro estacionado en la confirmación
     motor: false,               // pitos y motor con Web Audio, sin archivos
@@ -62,8 +63,9 @@
       eyebrowConfirmado: 'Bandera a cuadros',
       saludo: 'Nos vemos en la pista, {nombre}',
       inicioWhatsApp: '¡Ka-chow! ⚡',
+      carreteraHint: 'Atrapa el No… si puedes 😏',
       largada: true,
-      huellas: true,
+      carretera: true,
       velocimetro: { desde: 200, hasta: 20, texto: 'Modo tranqui activado' },
       carro: true,
       motor: true,
@@ -181,14 +183,70 @@
       preparar() {
         if (ctx) return;
         try {
+          // iPhone: que suene como un video aunque el celular esté en silencio.
+          if (navigator.audioSession) navigator.audioSession.type = 'playback';
           const Contexto = window.AudioContext || window.webkitAudioContext;
-          if (Contexto) ctx = new Contexto();
-          ctx?.resume?.().catch(() => {});
+          if (!Contexto) return;
+          ctx = new Contexto();
+          // Desbloqueo de iOS: un sonido vacío dentro del mismo toque.
+          const vacio = ctx.createBufferSource();
+          vacio.buffer = ctx.createBuffer(1, 1, 22050);
+          vacio.connect(ctx.destination);
+          vacio.start(0);
+          ctx.resume?.().catch(() => {});
         } catch { ctx = null; }
+      },
+      reanudar() {
+        if (ctx && ctx.state !== 'running') ctx.resume?.().catch(() => {});
       },
       pito(frec, dur = 0.16) {
         if (!ctx) return;
         try { tono(frec, dur, 0.06); } catch { /* sin sonido */ }
+      },
+      llegada() {
+        [660, 880, 1320].forEach((f, i) => setTimeout(() => this.pito(f, i === 2 ? 0.45 : 0.14), i * 130));
+      },
+      // Llanta que chilla: ruido filtrado más un silbido con vibrato.
+      chirrido(dur = 0.45) {
+        if (!ctx) return;
+        try {
+          const t = ctx.currentTime;
+          const n = Math.floor(ctx.sampleRate * dur);
+          const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
+          const datos = buffer.getChannelData(0);
+          for (let i = 0; i < n; i++) datos[i] = Math.random() * 2 - 1;
+          const ruido = ctx.createBufferSource();
+          const banda = ctx.createBiquadFilter();
+          const g = ctx.createGain();
+          ruido.buffer = buffer;
+          banda.type = 'bandpass';
+          banda.Q.value = 8;
+          banda.frequency.setValueAtTime(2700, t);
+          banda.frequency.linearRampToValueAtTime(1900, t + dur);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          ruido.connect(banda).connect(g).connect(ctx.destination);
+          ruido.start(t);
+          const o = ctx.createOscillator();
+          const go = ctx.createGain();
+          const lfo = ctx.createOscillator();
+          const prof = ctx.createGain();
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(1300, t);
+          o.frequency.linearRampToValueAtTime(950, t + dur);
+          lfo.frequency.value = 36;
+          prof.gain.value = 70;
+          lfo.connect(prof).connect(o.frequency);
+          go.gain.setValueAtTime(0.0001, t);
+          go.gain.exponentialRampToValueAtTime(0.035, t + 0.03);
+          go.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          o.connect(go).connect(ctx.destination);
+          o.start(t);
+          lfo.start(t);
+          o.stop(t + dur + 0.05);
+          lfo.stop(t + dur + 0.05);
+        } catch { /* sin sonido */ }
       },
       motor(dur = 1.4) {
         if (!ctx) return;
@@ -258,6 +316,34 @@
       svg('path', { class: 'carro__boca', d: 'M201 66C209 72.5 222 72.5 230 64.5' }),
       guardabarro(62), guardabarro(192),
       rueda(62), rueda(192));
+  }
+
+  /* El mismo carro visto desde arriba, con la trompa hacia abajo: es el No de la carretera. */
+  function carroArriba() {
+    const rueda = (x, y) => svg('rect', { class: 'carro__llanta', x, y, width: 8, height: 19, rx: 2.5 });
+    const ojo = (cx) => [
+      svg('ellipse', { class: 'carro__ojo', cx, cy: 67, rx: 6.5, ry: 5.5 }),
+      svg('circle', { class: 'carro__iris', cx, cy: 69, r: 3.4 }),
+      svg('circle', { class: 'carro__pupila', cx, cy: 69.6, r: 1.6 }),
+      svg('circle', { class: 'carro__luz-ojo', cx: cx + 1.1, cy: 68.2, r: 0.8 }),
+    ];
+    return svg('svg', { class: 'carro carro--arriba', viewBox: '0 0 60 104', 'aria-hidden': 'true', focusable: 'false' },
+      svg('ellipse', { class: 'carro__sombra', cx: 33, cy: 56, rx: 28, ry: 50 }),
+      rueda(0, 15), rueda(52, 15), rueda(0, 72), rueda(52, 72),
+      svg('path', {
+        class: 'carro__cuerpo',
+        d: 'M15 6C15 3 45 3 45 6L52 14C56 32 56 72 53 90C51 98 43 101 30 101C17 101 9 98 7 90C4 72 4 32 8 14Z',
+      }),
+      svg('rect', { class: 'carro__aleron', x: 3, y: 1, width: 54, height: 7, rx: 2.5 }),
+      svg('path', { class: 'carro__ventana', d: 'M17 21H43L46 33H14Z' }),
+      svg('text', { class: 'carro__numero carro__numero--techo', x: 30, y: 52, 'text-anchor': 'middle' }, '95'),
+      svg('path', { class: 'carro__parabrisas', d: 'M12 59H48L45 75H15Z' }),
+      ojo(22), ojo(38),
+      svg('path', { class: 'carro__rayo', d: 'M7 34L12 45L9 45L13 58L6 47L9 47ZM53 34L48 45L51 45L47 58L54 47L51 47Z' }),
+      svg('path', { class: 'carro__rayo', d: 'M33 77L25 88H30L27 98L37 85H32L35 77Z' }),
+      svg('ellipse', { class: 'carro__faro', cx: 14, cy: 92, rx: 3.2, ry: 2.2 }),
+      svg('ellipse', { class: 'carro__faro', cx: 46, cy: 92, rx: 3.2, ry: 2.2 }),
+      svg('path', { class: 'carro__boca', d: 'M22 96.5Q30 100.5 38 96.5' }));
   }
 
   /* ---------- Transiciones entre pantallas ---------- */
@@ -344,6 +430,10 @@
   /* ---------- 2. Pregunta ---------- */
 
   function mostrarPregunta(c) {
+    if (estilo.carretera) {
+      mostrarCarretera(c);
+      return;
+    }
     const si = h('button', { class: 'btn btn-si', type: 'button', text: 'Sí' });
     const no = h('button', { class: 'btn btn-no', type: 'button', 'aria-label': 'No', text: 'No' });
     const arena = h('div', { class: 'arena' }, si, no);
@@ -390,11 +480,9 @@
     const VUELO = 480;         // lo que dura el salto (ver .arena .btn en styles.css)
 
     const st = { intentos: 0, rendido: false, ultima: -Infinity, ultimoConteo: -Infinity, W: 0, H: 0,
-      si: { x: 0, y: 0 }, no: { x: 0, y: 0 }, risa: 0, bloqueo: 0, vuelo: 0 };
+      si: { x: 0, y: 0 }, no: { x: 0, y: 0 }, risa: 0, bloqueo: 0 };
     const control = new AbortController();
     const opc = { signal: control.signal };
-    const capaHuellas = estilo.huellas ? svg('svg', { class: 'huellas', 'aria-hidden': 'true' }) : null;
-    if (capaHuellas) arena.prepend(capaHuellas);
 
     const escNo = () => Math.max(0.45, 1 - 0.1 * st.intentos);
     const escSi = () => Math.min(1.6, 1 + 0.08 * st.intentos);
@@ -461,52 +549,7 @@
       return mejor || { x: x1, y: y0 };
     }
 
-    /* Tema con huellas: el No se inclina como un carro que arranca y deja dos marcas
-       de llanta que siguen su posición real (rebote incluido) y luego se secan. */
-    function arrancar(desde, hasta) {
-      const dx = hasta.x - desde.x;
-      const dy = hasta.y - desde.y;
-      const largo = Math.hypot(dx, dy);
-      if (largo < 24) return;
-      no.style.setProperty('--inclinacion', `${dx >= 0 ? -7 : 7}deg`);
-      no.classList.add('volando');
-      clearTimeout(st.vuelo);
-      st.vuelo = setTimeout(() => no.classList.remove('volando'), VUELO * 0.75);
-
-      const sep = Math.max(6, Math.min(11, no.offsetHeight * escNo() * 0.24));
-      const nx = (-dy / largo) * sep;
-      const ny = (dx / largo) * sep;
-      const llantas = [svg('polyline'), svg('polyline')];
-      const polvo = [0, 1, 2].map((i) => svg('circle', {
-        class: 'polvo',
-        r: 7 - i * 1.5,
-        cx: (desde.x - (dx / largo) * (8 + i * 9) + (Math.random() - 0.5) * 10).toFixed(1),
-        cy: (desde.y - (dy / largo) * (8 + i * 9) + (Math.random() - 0.5) * 10).toFixed(1),
-        style: `animation-delay: ${i * 60}ms`,
-      }));
-      const grupo = svg('g', { class: 'huella' }, llantas, polvo);
-      capaHuellas.append(grupo);
-      const puntos = [[], []];
-      const a = arena.getBoundingClientRect();
-      const t0 = performance.now();
-      (function paso() {
-        if (!grupo.isConnected) return;
-        const r = no.getBoundingClientRect();
-        const cx = r.left + r.width / 2 - a.left;
-        const cy = r.top + r.height / 2 - a.top;
-        llantas.forEach((l, i) => {
-          const k = i ? 1 : -1;
-          puntos[i].push(`${(cx + nx * k).toFixed(1)},${(cy + ny * k).toFixed(1)}`);
-          l.setAttribute('points', puntos[i].join(' '));
-        });
-        if (performance.now() - t0 < VUELO + 80) requestAnimationFrame(paso);
-      }());
-      setTimeout(() => grupo.classList.add('seca'), VUELO + 700);
-      setTimeout(() => grupo.remove(), VUELO + 2300);
-    }
-
     function moverNo(x, y, animar) {
-      const antes = st.no;
       st.no = { x, y };
       const fn = () => aplicar(no, x, y, escNo());
       if (!animar) return sinTransicion(no, fn);
@@ -515,7 +558,6 @@
         setTimeout(() => { sinTransicion(no, fn); no.classList.remove('parpadeo'); }, 130);
         return undefined;
       }
-      if (capaHuellas) arrancar(antes, st.no);
       return fn();
     }
 
@@ -677,8 +719,386 @@
     };
   }
 
+  /* ---------- 2b. Carretera: el No es el carro y la meta es el Sí ---------- */
+
+  function mostrarCarretera(c) {
+    const frase = h('p', { class: 'frase', 'aria-live': 'polite' });
+    const lienzo = h('canvas', { class: 'carretera__lienzo', 'aria-hidden': 'true' });
+    const placa = h('span', { class: 'carro-no__placa', 'aria-hidden': 'true', text: 'No' });
+    const no = h('button', { class: 'btn-no carro-no', type: 'button', 'aria-label': 'No' }, carroArriba(), placa);
+    const si = h('button', { class: 'btn btn-si carretera__si', type: 'button', hidden: true, text: 'Sí' });
+    const via = h('div', { class: 'carretera' }, lienzo, no, si);
+    const tarjeta = h('article', { class: 'tarjeta tarjeta--carretera' },
+      h('p', { class: 'eyebrow', text: `Para ti, ${c.para}` }),
+      h('h1', { class: 'pregunta', tabindex: '-1', 'data-foco': true, text: c.pregunta }),
+      frase,
+      via);
+
+    let juego;
+    mostrar(h('section', { class: 'pantalla pantalla--carretera' }, tarjeta), () => {
+      juego = montarCarretera({ via, lienzo, no, placa, si, frase, cita: c });
+    });
+
+    let aceptado = false;
+    si.addEventListener('click', async () => {
+      if (aceptado || !juego?.enMeta()) return;
+      aceptado = true;
+      const intentos = juego.terminar();
+      await celebrar(si, tarjeta, frase);
+      mostrarPlan(c, intentos);
+    });
+  }
+
+  /* La vía baja sin fin (la cámara avanza y el dibujo sube) con curvas suaves. El carro
+     va a un tercio de la pantalla; cada intento de tocarlo lo hace cambiar de carril con
+     derrape, chirrido y huellas en el asfalto. Al rendirse suelta la placa del No y la
+     vía llega a la línea de meta, donde aparece el Sí. */
+  function montarCarretera({ via, lienzo, no, placa, si, frase, cita }) {
+    const limite = cita.intentos_para_desaparecer;
+    const frases = cita.frases_no;
+    const PAUSA = 300;         // una huida por gesto (pointerdown + touchstart)
+    const LECTURA = 1200;      // tiempo mínimo entre intentos contados
+    const VIRAJE = 520;        // lo que dura cada cambio de carril
+    const CRUCERO = 150;       // px por segundo
+    const RADIO_RATON = 90;
+    const RADIO_DEDO = 70;
+    const CELDA = 64;          // cada cuánto puede haber un árbol o flores al lado de la vía
+
+    const css = getComputedStyle(via);
+    const color = (n) => css.getPropertyValue(n).trim();
+    const C = {
+      terreno: color('--c-terreno'), arbol: color('--c-arbol'), arbolLuz: color('--c-arbol-luz'),
+      flor: color('--c-acento'), flor2: color('--c-lacre'), via: color('--c-via'), raya: color('--c-raya'),
+      borde: color('--c-papel'), piano: color('--c-acento'), huella: color('--c-huella-via'),
+      polvo: color('--c-polvo'), cuadro: color('--c-cuadro'),
+    };
+    const g = lienzo.getContext('2d');
+    const st = { W: 0, H: 0, ancho: 0, A: 0, camara: 0, vel: 0, antes: 0,
+      lado: 0, desde: 0, hacia: 0, t0: -Infinity, rastro: null, huellas: [], polvo: [],
+      intentos: 0, rendido: false, meta: null, enMeta: false, ultima: -Infinity, ultimoConteo: -Infinity,
+      risa: 0, bloqueo: 0, x: 0, y: 0 };
+    const control = new AbortController();
+    const opc = { signal: control.signal };
+
+    const centro = (wy) => st.W / 2 + st.A * (0.7 * Math.sin(wy / 190 + 0.6) + 0.3 * Math.sin(wy / 83 + 2.1));
+    const pendiente = (wy) => st.A * ((0.7 / 190) * Math.cos(wy / 190 + 0.6) + (0.3 / 83) * Math.cos(wy / 83 + 2.1));
+    const maxLado = () => Math.max(0, st.ancho / 2 - no.offsetWidth / 2 - 8);
+    const carroY = () => Math.round(st.H * 0.3);
+    const carril = () => (st.hacia > 0 ? 'derecho' : st.hacia < 0 ? 'izquierdo' : 'centro');
+    const azar = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    const cerca = (cx, cy, margen) => {
+      const r = no.getBoundingClientRect();
+      return cx >= r.left - margen && cx <= r.right + margen && cy >= r.top - margen && cy <= r.bottom + margen;
+    };
+
+    function medir() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      st.W = via.clientWidth;
+      st.H = via.clientHeight;
+      lienzo.width = Math.round(st.W * dpr);
+      lienzo.height = Math.round(st.H * dpr);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      st.ancho = Math.min(180, Math.max(124, st.W * 0.46));
+      st.A = Math.max(0, (st.W - st.ancho) / 2 - 18);
+      const lado = (st.rendido ? 0 : Math.sign(st.hacia || 1) * maxLado());
+      st.lado = st.desde = st.hacia = lado;
+      no.dataset.carril = carril();
+    }
+
+    // Punto del carro (coordenadas locales, trompa hacia abajo) llevado al mundo.
+    function aMundo(lx, ly, grados) {
+      const a = (grados * Math.PI) / 180;
+      return [st.x + lx * Math.cos(a) - ly * Math.sin(a), st.camara + st.y + lx * Math.sin(a) + ly * Math.cos(a)];
+    }
+
+    function virar(ahora, haciaCentro = false) {
+      st.desde = st.lado;
+      st.hacia = haciaCentro ? 0 : (st.lado > 0 ? -maxLado() : maxLado());
+      st.t0 = ahora;
+      no.dataset.carril = carril();
+      if (haciaCentro || reducido()) { st.rastro = null; return; }
+      st.rastro = { llantas: [[], []], nacio: ahora };
+      st.huellas.push(st.rastro);
+      for (let i = 0; i < 7; i++) {
+        const [wx, wy] = aMundo((i % 2 ? 1 : -1) * no.offsetWidth * 0.38, -no.offsetHeight * 0.3, 0);
+        st.polvo.push({ wx, wy, vx: (Math.random() - 0.5) * 70, vy: -20 - Math.random() * 40, nacio: ahora, r: 3 + Math.random() * 3 });
+      }
+      sonido.chirrido();
+      sonido.motor(0.7);
+    }
+
+    function dibujar(ahora) {
+      const { W, H, camara } = st;
+      g.fillStyle = C.terreno;
+      g.fillRect(0, 0, W, H);
+
+      // Árboles y flores (las silletas de Santa Elena) a los lados, siempre en el mismo lugar del mundo.
+      for (let i = Math.floor((camara - 30) / CELDA); i <= Math.ceil((camara + H + 30) / CELDA); i++) {
+        for (const k of [0, 1]) {
+          const n = i * 2 + k;
+          if (azar(n) < 0.3) continue;
+          const wy = i * CELDA + azar(n + 0.5) * CELDA;
+          const borde = centro(wy) + (k ? 1 : -1) * (st.ancho / 2 + 14);
+          const espacio = k ? W - borde - 8 : borde - 8;
+          if (espacio < 12) continue;
+          const x = k ? borde + azar(n + 0.7) * espacio : 8 + azar(n + 0.7) * espacio;
+          const y = wy - camara;
+          if (azar(n + 0.9) < 0.45) {
+            const r = 7 + azar(n + 0.3) * 7;
+            g.fillStyle = C.arbol;
+            g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+            g.fillStyle = C.arbolLuz;
+            g.beginPath(); g.arc(x - r * 0.3, y - r * 0.3, r * 0.45, 0, Math.PI * 2); g.fill();
+          } else {
+            for (let f = 0; f < 4; f++) {
+              g.fillStyle = f % 2 ? C.flor2 : C.flor;
+              g.beginPath(); g.arc(x + (azar(n + f) - 0.5) * 16, y + (azar(n + f + 0.2) - 0.5) * 12, 2.4, 0, Math.PI * 2); g.fill();
+            }
+          }
+        }
+      }
+
+      // La vía: pianos rojo y blanco, asfalto y raya del centro.
+      // Se dibuja más allá de los bordes: en curva, el corte recto del trazo quedaría a la vista.
+      const fuera = st.ancho;
+      g.beginPath();
+      for (let sy = -fuera; sy <= H + fuera; sy += 8) {
+        const x = centro(camara + sy);
+        if (sy === -fuera) g.moveTo(x, sy); else g.lineTo(x, sy);
+      }
+      g.lineJoin = 'round';
+      g.lineCap = 'butt';
+      g.setLineDash([]);
+      g.lineWidth = st.ancho + 12;
+      g.strokeStyle = C.borde;
+      g.stroke();
+      g.setLineDash([12, 12]);
+      g.lineDashOffset = camara;
+      g.strokeStyle = C.piano;
+      g.stroke();
+      g.setLineDash([]);
+      g.lineWidth = st.ancho;
+      g.strokeStyle = C.via;
+      g.stroke();
+      g.setLineDash([18, 16]);
+      g.lineDashOffset = camara;
+      g.lineWidth = 3;
+      g.strokeStyle = C.raya;
+      g.stroke();
+      g.setLineDash([]);
+
+      // Línea de meta a cuadros.
+      if (st.meta != null) {
+        const y = st.meta - camara;
+        const x0 = centro(st.meta) - st.ancho / 2;
+        const lado = 9;
+        for (let fila = 0; fila < 2; fila++) {
+          for (let col = 0; col * lado < st.ancho; col++) {
+            g.fillStyle = (fila + col) % 2 ? C.cuadro : C.borde;
+            g.fillRect(x0 + col * lado, y + fila * lado, Math.min(lado, st.ancho - col * lado), lado);
+          }
+        }
+      }
+
+      // Huellas de llanta que se van borrando.
+      g.lineWidth = 5;
+      g.setLineDash([3, 2]);
+      g.strokeStyle = C.huella;
+      st.huellas = st.huellas.filter((hu) => ahora - hu.nacio < 4500);
+      for (const hu of st.huellas) {
+        g.globalAlpha = Math.max(0, 1 - (ahora - hu.nacio) / 4500);
+        for (const pts of hu.llantas) {
+          if (pts.length < 2) continue;
+          g.beginPath();
+          pts.forEach(([wx, wy], i) => (i ? g.lineTo(wx, wy - camara) : g.moveTo(wx, wy - camara)));
+          g.stroke();
+        }
+      }
+      g.setLineDash([]);
+
+      // Polvo del derrape.
+      g.fillStyle = C.polvo;
+      st.polvo = st.polvo.filter((p) => ahora - p.nacio < 750);
+      for (const p of st.polvo) {
+        const t = (ahora - p.nacio) / 750;
+        g.globalAlpha = 0.85 * (1 - t);
+        g.beginPath();
+        g.arc(p.wx + p.vx * t, p.wy + p.vy * t - camara, p.r * (1 + t * 1.8), 0, Math.PI * 2);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+
+    function cuadro(ahora) {
+      if (control.signal.aborted) return;
+      const dt = st.antes ? Math.min(0.05, (ahora - st.antes) / 1000) : 0;
+      st.antes = ahora;
+
+      if (!st.enMeta) {
+        let objetivo = reducido() ? 0 : CRUCERO * (ahora - st.t0 < 700 ? 1.5 : 1);
+        if (st.meta != null) {
+          const falta = st.meta - (st.camara + carroY() + no.offsetHeight / 2) - 6;
+          if (falta <= 0.5) llegar();
+          else objetivo = Math.min(objetivo || CRUCERO, Math.max(14, falta * 2.4));
+        }
+        st.vel += (objetivo - st.vel) * Math.min(1, dt * 3);
+        if (!st.enMeta) st.camara += st.vel * dt;
+      }
+
+      const dur = reducido() ? 1 : VIRAJE;
+      const p = Math.min(1, (ahora - st.t0) / dur);
+      st.lado = st.desde + (st.hacia - st.desde) * p * p * (3 - 2 * p);
+      const wy = st.camara + carroY();
+      st.x = centro(wy) + st.lado;
+      st.y = carroY();
+      const giro = (-Math.atan(pendiente(wy)) * 180) / Math.PI;
+      const derrape = p < 1 && !reducido() ? -Math.sign(st.hacia - st.desde) * 22 * Math.sin(Math.PI * p) : 0;
+      const angulo = Math.max(-45, Math.min(45, giro + derrape));
+      no.style.transform = `translate(${(st.x - no.offsetWidth / 2).toFixed(1)}px, ${(st.y - no.offsetHeight / 2).toFixed(1)}px) rotate(${angulo.toFixed(2)}deg)`;
+
+      if (st.rastro && p < 1) {
+        [-1, 1].forEach((k, i) => st.rastro.llantas[i].push(aMundo(k * no.offsetWidth * 0.38, -no.offsetHeight * 0.3, angulo)));
+      }
+      if (st.enMeta) ponerSi();
+      dibujar(ahora);
+      requestAnimationFrame(cuadro);
+    }
+
+    function ponerSi() {
+      const y = st.meta - st.camara + 18 + si.offsetHeight / 2;
+      si.style.transform = `translate(${(centro(st.meta) - si.offsetWidth / 2).toFixed(1)}px, ${(y - si.offsetHeight / 2).toFixed(1)}px)`;
+    }
+
+    function llegar() {
+      st.enMeta = true;
+      st.vel = 0;
+      si.hidden = false;
+      ponerSi();
+      si.classList.add('llega');
+      sonido.llegada();
+      vibrar([20, 40, 20]);
+      si.focus({ preventScroll: true });
+    }
+
+    function reir() {
+      placa.textContent = estilo.risas[(st.intentos - 1) % estilo.risas.length];
+      clearTimeout(st.risa);
+      st.risa = setTimeout(() => { placa.textContent = 'No'; }, 700);
+    }
+
+    function rendirse() {
+      st.rendido = true;
+      clearTimeout(st.risa);
+      clearTimeout(st.bloqueo);
+      placa.textContent = 'No';
+      placa.classList.add('vuela');
+      no.classList.add('rendido');
+      no.style.pointerEvents = 'none';
+      no.tabIndex = -1;
+      no.setAttribute('aria-hidden', 'true');
+      mostrarFrase(frase, cita.frase_final, true);
+      // Ya sin la placa vuelve al centro de la vía, y la meta aparece adelante.
+      setTimeout(() => virar(performance.now(), true), VIRAJE + 60);
+      st.meta = reducido()
+        ? st.camara + carroY() + no.offsetHeight / 2 + 6
+        : st.camara + carroY() + st.H * 0.75;
+    }
+
+    function huir() {
+      if (st.rendido) return;
+      const ahora = performance.now();
+      if (ahora - st.ultima < PAUSA) return;
+      st.ultima = ahora;
+      // Mientras vira no recibe toques: si el dedo sigue ahí, el evento cae en la vía.
+      no.style.pointerEvents = 'none';
+      clearTimeout(st.bloqueo);
+      st.bloqueo = setTimeout(() => { if (!st.rendido) no.style.pointerEvents = ''; }, VIRAJE);
+      if (reducido()) {
+        no.classList.add('parpadeo');
+        setTimeout(() => no.classList.remove('parpadeo'), 160);
+      }
+      virar(ahora);
+      vibrar();
+      // Si la frase anterior aún se está leyendo, el carro igual esquiva pero no cuenta intento.
+      if (ahora - st.ultimoConteo < LECTURA) return;
+      st.ultimoConteo = ahora;
+      st.intentos += 1;
+      if (st.intentos >= limite) {
+        rendirse();
+        return;
+      }
+      reir();
+      mostrarFrase(frase, frases[Math.min(st.intentos, frases.length) - 1]);
+    }
+
+    medir();
+    mostrarFrase(frase, estilo.carreteraHint);
+    requestAnimationFrame((t) => {
+      cuadro(t);
+      via.classList.add('lista');
+    });
+
+    /* Celular: el touchstart cancela el click sintético antes de que exista. */
+    via.addEventListener('touchstart', (e) => {
+      sonido.reanudar();
+      if (st.rendido) return;
+      const t = e.changedTouches[0];
+      if (!t || si.contains(e.target)) return;
+      if (no.contains(e.target) || cerca(t.clientX, t.clientY, 24)) {
+        e.preventDefault();
+        huir();
+      }
+    }, { passive: false, signal: control.signal });
+
+    via.addEventListener('pointerdown', (e) => {
+      sonido.reanudar();
+      if (st.rendido || si.contains(e.target)) return;
+      if (no.contains(e.target) || cerca(e.clientX, e.clientY, e.pointerType === 'mouse' ? 0 : 24)) {
+        e.preventDefault();
+        huir();
+      }
+    }, opc);
+
+    document.addEventListener('pointermove', (e) => {
+      if (st.rendido) return;
+      const r = no.getBoundingClientRect();
+      const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (d < (e.pointerType === 'mouse' ? RADIO_RATON : RADIO_DEDO)) huir();
+    }, { passive: true, signal: control.signal });
+
+    no.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      huir();
+    }, opc);
+
+    /* Teclado: el carro es el único control hasta la meta; Enter o espacio lo hacen esquivar. */
+    no.addEventListener('focus', huir, opc);
+    no.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        huir();
+      }
+    }, opc);
+    no.addEventListener('keyup', (e) => { if (e.key === ' ') e.preventDefault(); }, opc);
+
+    const observador = new ResizeObserver(() => { if (!control.signal.aborted) medir(); });
+    observador.observe(via);
+
+    return {
+      enMeta: () => st.enMeta,
+      terminar() {
+        control.abort();
+        observador.disconnect();
+        clearTimeout(st.risa);
+        clearTimeout(st.bloqueo);
+        return st.intentos;
+      },
+    };
+  }
+
   async function celebrar(si, tarjeta, frase) {
-    si.classList.remove('frena');
+    si.classList.remove('frena', 'llega');
     si.classList.add('elegido');
     tarjeta.classList.add('celebra');
     mostrarFrase(frase, estilo.celebracion, true);

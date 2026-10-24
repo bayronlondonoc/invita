@@ -99,8 +99,13 @@
   --c-rin: #E23246;
   --c-vidrio: #2B2731;
   --c-ojo: #3C83C8;
-  --c-huella: rgba(46, 42, 48, .3);
-  --c-polvo: rgba(160, 120, 90, .4);
+  --c-polvo: rgba(150, 110, 80, .45);
+  --c-terreno: #EEC48E;         /* tierra del camino, vista desde arriba */
+  --c-arbol: #6F7F37;
+  --c-arbol-luz: #92A04C;
+  --c-via: #57525C;             /* asfalto de la carretera (más claro que la noche, para ver las huellas) */
+  --c-huella-via: rgba(18, 14, 18, .55);
+  --c-parabrisas: #BCD8EE;
   --c-cuadro: #2A2120;
   --c-luz-apagada: #4A444D;
   --c-luz-roja: #FF3B3B;
@@ -716,38 +721,6 @@ body {
 }
 @keyframes estela { from { width: 0; } to { width: 120vw; } }
 
-/* ---------- Huellas de llanta del No ---------- */
-
-.huellas {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.huella { transition: opacity 1.4s ease; }
-.huella.seca { opacity: 0; }
-.huella polyline {
-  fill: none;
-  stroke: var(--c-huella, var(--c-linea));
-  stroke-width: 5;
-  stroke-dasharray: 3 2;
-  stroke-linejoin: round;
-}
-.polvo {
-  fill: var(--c-polvo, var(--c-linea));
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: polvo .8s ease-out forwards;
-}
-@keyframes polvo {
-  from { opacity: .9; transform: scale(.4); }
-  to   { opacity: 0; transform: scale(1.9); }
-}
-
 /* ---------- Velocímetro ---------- */
 
 .velocimetro { width: min(100%, 230px); margin: 20px auto 0; }
@@ -791,6 +764,87 @@ body {
 .velocimetro.listo .vel__texto { opacity: 1; }
 
 .confirmado__carro { width: 150px; margin: -4px auto 16px; }
+
+/* ---------- Carretera: el No es el carro y la meta es el Sí ---------- */
+
+.pantalla--carretera { max-width: 440px; }
+.tarjeta--carretera {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  height: calc(100dvh - 56px);
+  min-height: 500px;
+  max-height: 880px;
+  padding: 30px 14px 14px;
+}
+.tema-rayo .tarjeta--carretera { padding: 38px 14px 14px; }
+.tarjeta--carretera .pregunta { padding: 0 8px; font-size: clamp(1.65rem, 7.6vw, 2.15rem); }
+.tarjeta--carretera .frase { min-height: 2.7em; margin: 10px 8px 12px; font-size: 1.14rem; text-wrap: balance; }
+.carretera {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--c-terreno);
+  box-shadow: inset 0 0 0 1px var(--c-linea);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.carretera__lienzo { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.carretera .carro-no {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 46px;
+  height: 80px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.carretera:not(.lista) .carro-no { visibility: hidden; }
+.carretera .carro-no:focus-visible { outline: 2px solid var(--c-lacre); outline-offset: 4px; border-radius: 14px; }
+.carro-no.parpadeo { opacity: 0; transition: opacity .12s linear; }
+.carro-no svg { display: block; width: 100%; height: 100%; pointer-events: none; }
+.carro-no__placa {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  padding: 2px 6px 3px;
+  border: 1.5px solid var(--c-tinta);
+  border-radius: 5px;
+  background: var(--c-papel);
+  font: 500 12px/1 var(--f-sans);
+  letter-spacing: .04em;
+  color: var(--c-tinta);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.carro-no__placa.vuela { animation: placa-vuela .9s cubic-bezier(.3, .6, .4, 1) forwards; }
+@keyframes placa-vuela {
+  30%  { transform: translate(-50%, -170%) rotate(-25deg) scale(1.25); opacity: 1; }
+  100% { transform: translate(-30%, -460%) rotate(-210deg) scale(.6); opacity: 0; }
+}
+.carretera__si { position: absolute; left: 0; top: 0; z-index: 3; height: 3.3rem; min-width: 7.5rem; font-size: 1.15rem; }
+.carretera__si[hidden] { display: none; }
+.carretera__si.llega { animation: llega .6s var(--rebote) both; }
+@keyframes llega {
+  from { scale: .3; opacity: 0; }
+  to   { scale: 1; opacity: 1; }
+}
+
+.carro--arriba .carro__sombra { opacity: .35; }
+.carro__parabrisas { fill: var(--c-parabrisas); }
+.carro__numero--techo { font-size: 15px; stroke-width: .8px; fill: var(--c-papel); }
 
 /* ---------- Tema Rayo: escenografía y detalles ---------- */
 
@@ -845,29 +899,6 @@ body.tema-rayo::before {
   border-color: var(--c-acento-oscuro);
 }
 
-/* El No es un carrito: dos ruedas, se inclina al arrancar y deja huellas */
-.tema-rayo .btn-no { color: var(--c-tinta); border-color: var(--c-tinta); }
-.tema-rayo .btn-no::before,
-.tema-rayo .btn-no::after {
-  content: "";
-  position: absolute;
-  bottom: -7px;
-  width: 15px;
-  height: 15px;
-  border: 3.5px solid var(--c-llanta);
-  border-radius: 50%;
-  background: conic-gradient(var(--c-llanta) 0 25%, var(--c-rin) 0 50%, var(--c-llanta) 0 75%, var(--c-rin) 0);
-  box-sizing: border-box;
-}
-.tema-rayo .btn-no::before { left: 17%; }
-.tema-rayo .btn-no::after { right: 17%; }
-.tema-rayo .btn-no.volando { rotate: var(--inclinacion, 0deg); }
-.tema-rayo .btn-no.volando::before,
-.tema-rayo .btn-no.volando::after { animation: girar .22s linear infinite; }
-.tema-rayo .arena .btn {          /* acelera y frena como un carro: sin rebote de resorte */
-  transition: transform 480ms cubic-bezier(.3, .85, .25, 1), rotate .22s ease, opacity .3s ease, background-color .2s ease;
-}
-
 /* Celebración a cuadros */
 .tema-rayo .destello {
   width: 10px;
@@ -907,9 +938,8 @@ body.tema-rayo::before {
 
 @media (prefers-reduced-motion: reduce) {
   .pantalla, .pantalla.saliendo { transform: none; transition: opacity .3s ease; }
-  .arena .btn,
-  .tema-rayo .arena .btn { transition: opacity .15s linear; }
-  .tema-rayo .btn-no.volando { rotate: none; }
+  .arena .btn { transition: opacity .15s linear; }
+  .carro-no__placa.vuela { animation: aparecer .4s ease reverse forwards; }
   .largada__carro, .arranca .largada__carro { animation: none; }
   .arranca .largada__carro { opacity: 0; transition: opacity .3s ease; }
   .arranca .largada__carro::before, .arranca .largada__carro::after { animation: none; }
@@ -921,7 +951,7 @@ body.tema-rayo::before {
   .sobre.abierto .sello__mitad--izq,
   .sobre.abierto .sello__mitad--der { transform: none; opacity: 0; }
   .frase.entra { animation-name: aparecer; }
-  .btn-si.elegido, .btn-si.frena { animation: none; }
+  .btn-si.elegido, .btn-si.frena, .carretera__si.llega { animation: none; }
   .btn-no.se-rinde { scale: 1; }
 }
 @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }

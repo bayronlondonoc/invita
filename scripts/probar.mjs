@@ -138,12 +138,17 @@ async function abrirLimpio() {
 
 const GEOMETRIA = `(() => {
   const r = (s) => { const n = document.querySelector(s); if (!n) return null; const b = n.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, cx: b.left + b.width / 2, cy: b.top + b.height / 2 }; };
-  const si = r('.arena .btn-si');
+  // Modo arena: botones Sí/No. Modo carretera: el No es el carro y el Sí aparece en la meta.
+  const NO = '.arena .btn-no, .carretera .carro-no:not(.rendido)';
+  const si = r('.arena .btn-si, .carretera__si:not([hidden])');
   const enSi = si ? document.elementFromPoint(si.cx, si.cy) : null;
-  return { no: r('.arena .btn-no'), si, arena: r('.arena'), tarjeta: r('.pantalla--pregunta .tarjeta'),
-    frase: document.querySelector('.frase')?.textContent || '', textoNo: document.querySelector('.arena .btn-no')?.textContent,
+  const nodoNo = document.querySelector(NO);
+  return { no: r(NO), si, arena: r('.arena, .carretera'), tarjeta: r('.pantalla--pregunta .tarjeta, .pantalla--carretera .tarjeta'),
+    carro: r('.carretera .carro-no'), carril: document.querySelector('.carretera .carro-no')?.dataset.carril,
+    frase: document.querySelector('.frase')?.textContent || '',
+    textoNo: (nodoNo?.querySelector('.carro-no__placa') || nodoNo)?.textContent,
     siArriba: !!enSi && !!enSi.closest('.btn-si'), clicksNo: window.__t?.clicksNo ?? -1, clicksSi: window.__t?.clicksSi ?? -1,
-    noRendido: !!document.querySelector('.arena .btn-no.se-rinde') };
+    noRendido: !!document.querySelector('.arena .btn-no.se-rinde, .carro-no.rendido') };
 })()`;
 const geo = () => ev(GEOMETRIA);
 const dentroDe = (a, b, tol = 0.75) => a.l >= b.l - tol && a.t >= b.t - tol && a.r <= b.r + tol && a.b <= b.b + tol;
@@ -172,7 +177,7 @@ async function irAPregunta(conToque) {
   if ((await ev('__invita.estilo')).largada) {
     verificar(await esperarA('!!document.querySelector(".pantalla--largada .luz.verde")', 7000), 'no se vio el semáforo en verde');
   }
-  const llego = await esperarA('!!document.querySelector(".pantalla--pregunta.visible .arena.lista")', 11000);
+  const llego = await esperarA('!!document.querySelector(".pantalla--pregunta.visible .arena.lista, .pantalla--carretera.visible .carretera.lista")', 11000);
   await dormir(700);
   await ev(`window.__t = { clicksNo: 0, clicksSi: 0 };
     document.addEventListener('click', (e) => {
@@ -186,10 +191,12 @@ function revisarGeometria(g, etiqueta) {
   if (g.no) {
     verificar(dentroDe(g.no, g.arena), `${etiqueta}: el No se salió de la arena ${JSON.stringify(g.no)} vs ${JSON.stringify(g.arena)}`);
     verificar(dentroDe(g.no, g.tarjeta), `${etiqueta}: el No se salió de la tarjeta`);
-    verificar(!cruzan(g.no, g.si), `${etiqueta}: el No tapa el Sí`);
+    if (g.si) verificar(!cruzan(g.no, g.si), `${etiqueta}: el No tapa el Sí`);
   }
-  verificar(g.siArriba, `${etiqueta}: el centro del Sí no es clickeable (algo lo tapa)`);
-  verificar(dentroDe(g.si, g.tarjeta), `${etiqueta}: el Sí se salió de la tarjeta`);
+  if (g.si) {
+    verificar(g.siArriba, `${etiqueta}: el centro del Sí no es clickeable (algo lo tapa)`);
+    verificar(dentroDe(g.si, g.tarjeta), `${etiqueta}: el Sí se salió de la tarjeta`);
+  }
   verificar(g.clicksNo === 0, `${etiqueta}: el No recibió ${g.clicksNo} click(s)`);
 }
 
@@ -206,7 +213,7 @@ async function escenarioToques({ ancho, alto, completo }) {
   const estilo = await ev('__invita.estilo');
   const frases = cita.frases_no?.length ? cita.frases_no : estilo.frasesNo;
 
-  if (cita.no_obligatorio) {
+  if (cita.no_obligatorio && !estilo.carretera) {
     // El Sí antes de tiempo no avanza: primero tiene que intentar el No.
     await tocarSelector('.arena .btn-si');
     await dormir(900);
@@ -219,6 +226,7 @@ async function escenarioToques({ ancho, alto, completo }) {
   for (let n = 1; n <= limite; n++) {
     g = await geo();
     const antes = g.no;
+    const carrilAntes = g.carril;
     // Toque directo al centro del No, y un segundo toque rápido donde estaba.
     await tocar(antes.cx, antes.cy);
     await dormir(40);
@@ -228,17 +236,16 @@ async function escenarioToques({ ancho, alto, completo }) {
       await dormir(t === 60 ? 20 : 90);
       const m = await geo();
       if (m.no) verificar(dentroDe(m.no, m.tarjeta), `intento ${n} (vuelo ${t}ms): el No se asomó fuera de la tarjeta`);
-      verificar(m.siArriba, `intento ${n} (vuelo ${t}ms): algo tapó el Sí`);
-      if (n < limite && t === 150 && estilo.huellas) {
-        verificar(await ev('[...document.querySelectorAll(".huellas polyline")].some(p => p.points.length > 2)'), `intento ${n}: el No no dejó huellas`);
-      }
+      if (m.si) verificar(m.siArriba, `intento ${n} (vuelo ${t}ms): algo tapó el Sí`);
       if (n < limite && t === 60) verificar(estilo.risas.includes(m.textoNo), `intento ${n}: el No no se rió (dice "${m.textoNo}")`);
     }
     await dormir(n === limite ? 1300 : 1250);  // > LECTURA (1200 ms) entre intentos contados
     g = await geo();
     revisarGeometria(g, `intento ${n}`);
     if (n < limite) {
-      verificar(Math.hypot(g.no.cx - antes.cx, g.no.cy - antes.cy) > 40, `intento ${n}: el No no se movió`);
+      // En la carretera la vía también curva: lo que cuenta es que el carro cambió de carril.
+      if (estilo.carretera) verificar(g.carril !== carrilAntes, `intento ${n}: el carro no cambió de carril (${g.carril})`);
+      else verificar(Math.hypot(g.no.cx - antes.cx, g.no.cy - antes.cy) > 40, `intento ${n}: el No no se movió`);
       verificar(g.frase === frases[Math.min(n, frases.length) - 1], `intento ${n}: frase "${g.frase}"`);
     } else {
       verificar(g.no === null, `intento ${n}: el No debía desaparecer`);
@@ -248,13 +255,24 @@ async function escenarioToques({ ancho, alto, completo }) {
   await dormir(800);
   g = await geo();
   verificar(g.textoNo === undefined, 'el No sigue en el DOM');
-  verificar(Math.abs(g.si.cx - (g.arena.l + g.arena.r) / 2) < 2, 'el Sí no quedó centrado al final');
-  ok(`${limite} toques al No: 0 clicks, siempre dentro, nunca encima del Sí`);
+  if (estilo.carretera) {
+    verificar(await ev('!!document.querySelector(".carro-no__placa.vuela")'), 'el carro no soltó la placa del No');
+    verificar(await esperarA('!!document.querySelector(".carretera__si:not([hidden])")', 9000), 'la carretera no llegó a la meta del Sí');
+    await dormir(700);
+    g = await geo();
+    verificar(g.si && dentroDe(g.si, g.arena), 'el Sí de la meta quedó fuera de la carretera');
+    verificar(g.si && !cruzan(g.carro, g.si), 'el carro tapa el Sí de la meta');
+    verificar(g.siArriba, 'el centro del Sí de la meta no es clickeable');
+    ok(`${limite} toques al carro del No: 0 clicks; soltó la placa y llegó a la meta del Sí`);
+  } else {
+    verificar(Math.abs(g.si.cx - (g.arena.l + g.arena.r) / 2) < 2, 'el Sí no quedó centrado al final');
+    ok(`${limite} toques al No: 0 clicks, siempre dentro, nunca encima del Sí`);
+  }
 
   if (!completo) return;
 
   // Sí → plan
-  await tocarSelector('.arena .btn-si');
+  await tocarSelector('.arena .btn-si, .carretera__si');
   verificar(await esperarA('!!document.querySelector(".pantalla--plan.visible")', 5000), 'el Sí no llevó al plan');
   verificar((await ev('__t.clicksSi')) === 1, 'el toque al Sí no generó exactamente un click (control positivo)');
   const fechaPlan = await ev('document.querySelector(".plan-fecha").textContent');
@@ -348,7 +366,8 @@ async function escenarioRaton() {
   }
   await dormir(400);
   g = await geo();
-  verificar(g.frase !== '', 'acercar el ratón no hizo huir al No');
+  const estilo = await ev('__invita.estilo');
+  verificar(g.frase !== '' && g.frase !== estilo.carreteraHint, 'acercar el ratón no hizo huir al No');
   ok(`al acercar el ratón el No huye (frase: "${g.frase}")`);
   revisarGeometria(g, 'ratón');
 
@@ -362,9 +381,24 @@ async function escenarioRaton() {
     ok('click directo con ratón sobre el No: 0 clicks');
   }
 
-  // Teclado: Tab desde el Sí llega al No → huye y el foco vuelve al Sí
+  // Carretera: el carro es el único control hasta la meta; con foco o Enter esquiva y nunca hace click.
   g = await geo();
-  if (g.no) {
+  if (g.no && estilo.carretera) {
+    await dormir(1300);
+    const fraseAntes = (await geo()).frase;
+    await ev('document.querySelector(".carro-no").focus(); true');
+    await dormir(1300);
+    await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await dormir(300);
+    g = await geo();
+    verificar(g.frase !== fraseAntes, 'con teclado el carro no esquivó');
+    revisarGeometria(g, 'teclado');
+    ok('teclado: foco y Enter en el carro lo hacen esquivar, 0 clicks');
+  }
+
+  // Teclado: Tab desde el Sí llega al No → huye y el foco vuelve al Sí
+  if (g.no && !estilo.carretera) {
     await dormir(350);
     await ev('document.querySelector(".arena .btn-si").focus(); true');
     await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
@@ -407,8 +441,16 @@ async function escenarioReducido() {
   await ventana({ ancho: 390, alto: 844, movil: true });
   await abrirLimpio();
   verificar(await irAPregunta(true), 'con movimiento reducido no abrió');
-  const transicion = await ev('getComputedStyle(document.querySelector(".arena .btn-no")).transitionProperty');
-  verificar(!transicion.includes('transform') && transicion !== 'all', `con movimiento reducido el No aún anima transform (${transicion})`);
+  if ((await ev('__invita.estilo')).carretera) {
+    // Sin desplazamiento continuo: la vía y el carro quietos mientras nadie toca.
+    const a = await geo();
+    await dormir(700);
+    const b = await geo();
+    verificar(Math.hypot(a.no.cx - b.no.cx, a.no.cy - b.no.cy) < 1, 'con movimiento reducido la carretera sigue avanzando');
+  } else {
+    const transicion = await ev('getComputedStyle(document.querySelector(".arena .btn-no")).transitionProperty');
+    verificar(!transicion.includes('transform') && transicion !== 'all', `con movimiento reducido el No aún anima transform (${transicion})`);
+  }
   for (let i = 0; i < 3; i++) {
     const g = await geo();
     await tocar(g.no.cx, g.no.cy);
@@ -438,7 +480,7 @@ async function escenarioRafaga() {
       cayoEnSi = true;
       break;
     }
-    verificar(m.siArriba, `ráfaga ${i}: algo tapa el Sí`);
+    if (m.si) verificar(m.siArriba, `ráfaga ${i}: algo tapa el Sí`);
     if (m.no) verificar(dentroDe(m.no, m.tarjeta), `ráfaga ${i}: el No fuera de la tarjeta`);
   }
   if (cayoEnSi) {
