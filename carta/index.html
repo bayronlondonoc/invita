@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Para la Pistolera</title>
+  <meta name="description" content="Una carta.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Para la Pistolera">
+  <meta property="og:description" content="Una carta.">
+  <meta property="og:image" content="https://bayronlondonoc.github.io/invita/carta/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Un sobre color crema cerrado con sello de lacre">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#EDE3D3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='14' width='56' height='38' rx='4' fill='%23F1E6D2' stroke='%237E1A1F' stroke-width='2'/%3E%3Cpath d='M5 16l27 20 27-20' fill='none' stroke='%237E1A1F' stroke-width='2'/%3E%3Ccircle cx='32' cy='36' r='8' fill='%237E1A1F'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Rye&display=swap">
+  <link rel="stylesheet" href="assets/estilos.css">
+  <script src="assets/carta.js" defer></script>
+</head>
+<body>
+  <main class="escena" id="escena">
+
+    <!-- 1. Cartel -->
+    <section class="vista vista--cartel" id="v-cartel" aria-label="Cartel de se busca">
+      <article class="cartel" id="cartel">
+        <span class="clavo clavo--izq" aria-hidden="true"></span>
+        <span class="clavo clavo--der" aria-hidden="true"></span>
+        <h1 class="cartel__titulo">Se busca</h1>
+        <p class="cartel__nombre"><span aria-hidden="true">— </span>La Pistolera<span aria-hidden="true"> —</span></p>
+        <div class="cartel__retrato" aria-hidden="true">
+          <svg viewBox="0 0 120 90" focusable="false">
+            <rect class="retrato__marco" x="3" y="3" width="114" height="84" rx="2"/>
+            <rect class="retrato__marco retrato__marco--fino" x="10" y="10" width="100" height="70" rx="1"/>
+            <path class="retrato__corazon" d="M60 70C44 58 32 49 32 37c0-8 6-14 13-14 6 0 11 4 15 9 4-5 9-9 15-9 7 0 13 6 13 14 0 12-12 21-28 33z"/>
+          </svg>
+        </div>
+        <p class="cartel__linea"><span class="cartel__rotulo">Cargo:</span> hacerse la ruda teniendo el corazón más tierno que he conocido.</p>
+        <p class="cartel__linea"><span class="cartel__rotulo">Recompensa:</span> una carta escrita a mano.</p>
+        <svg class="sello-tinta" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="tinta-irregular" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="ruido"/>
+              <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2.2"/>
+            </filter>
+            <path id="aro-texto" d="M60 60m-41 0a41 41 0 1 1 82 0a41 41 0 1 1-82 0"/>
+          </defs>
+          <g filter="url(#tinta-irregular)">
+            <circle cx="60" cy="60" r="54" class="sello-tinta__aro"/>
+            <circle cx="60" cy="60" r="31" class="sello-tinta__aro sello-tinta__aro--fino"/>
+            <text class="sello-tinta__texto"><textPath href="#aro-texto" startOffset="0">CORREO DEL OESTE · ENTREGA ESPECIAL ·</textPath></text>
+            <path class="sello-tinta__estrella" d="M60 41l5.4 11.6 12.6 1.4-9.4 8.6 2.6 12.4L60 68.7l-11.2 6.3 2.6-12.4-9.4-8.6 12.6-1.4z"/>
+          </g>
+        </svg>
+        <button class="boton-cartel" id="entregarme" type="button">Entregarme</button>
+      </article>
+    </section>
+
+    <!-- 2. Sobre -->
+    <section class="vista vista--sobre" id="v-sobre" aria-label="Sobre" hidden>
+      <div class="sobre" id="sobre">
+        <span class="sobre__interior"></span>
+        <span class="sobre__hoja" aria-hidden="true"></span>
+        <span class="sobre__bolsillo"></span>
+        <span class="sobre__solapa-caja"><span class="sobre__solapa"></span></span>
+        <button class="lacre" id="lacre" type="button" aria-label="Romper el sello y abrir la carta">
+          <span class="lacre__mitad lacre__mitad--izq"><span class="lacre__letra">B</span></span>
+          <span class="lacre__mitad lacre__mitad--der"><span class="lacre__letra">B</span></span>
+        </button>
+      </div>
+      <p class="pista-sello" id="pista-sello">Toca el sello</p>
+    </section>
+
+    <!-- 3. Mesa con las hojas -->
+    <section class="vista vista--mesa" id="v-mesa" aria-label="Las hojas de la carta" hidden>
+      <div class="mesa__hojas" id="hojas" aria-live="polite"></div>
+      <div class="mesa__pie">
+        <button class="mesa__flecha" id="mesa-ant" type="button" aria-label="Hoja anterior">‹</button>
+        <p class="mesa__indicador" id="indicador"></p>
+        <button class="mesa__flecha" id="mesa-sig" type="button" aria-label="Hoja siguiente">›</button>
+      </div>
+      <p class="mesa__ayuda" id="ayuda">Toca la hoja para leerla</p>
+      <button class="boton-sobrio" id="cerrar-carta" type="button" hidden>Cerrar la carta</button>
+    </section>
+
+    <!-- 5. Final -->
+    <section class="vista vista--final" id="v-final" aria-label="Final" hidden>
+      <div class="petalos" id="petalos" aria-hidden="true"></div>
+      <div class="final">
+        <p class="final__frase">Me quedo con todo lo bonito.</p>
+        <p class="final__firma">— B.</p>
+      </div>
+      <button class="boton-discreto" id="leer-de-nuevo" type="button">Leer de nuevo</button>
+    </section>
+  </main>
+
+  <!-- 4. Visor a pantalla completa -->
+  <div class="visor" id="visor" role="dialog" aria-modal="true" aria-label="Hoja de la carta" hidden>
+    <div class="visor__marco" id="marco">
+      <img class="visor__img" id="visor-img" alt="" draggable="false">
+    </div>
+    <button class="visor__cerrar" id="visor-cerrar" type="button" aria-label="Cerrar la hoja">×</button>
+    <button class="visor__flecha visor__flecha--ant" id="visor-ant" type="button" aria-label="Hoja anterior">‹</button>
+    <button class="visor__flecha visor__flecha--sig" id="visor-sig" type="button" aria-label="Hoja siguiente">›</button>
+    <div class="visor__pie">
+      <p class="visor__contador" id="visor-contador"></p>
+      <button class="boton-sobrio boton-sobrio--claro" id="visor-fin" type="button" hidden>Cerrar la carta</button>
+    </div>
+  </div>
+
+  <noscript><p class="sin-js">Para leer esta carta necesitas activar JavaScript.</p></noscript>
+</body>
+</html>
