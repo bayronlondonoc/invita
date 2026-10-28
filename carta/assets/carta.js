@@ -3,8 +3,9 @@
 /* Las hojas, en orden. Cada una vive en hojas/<nombre> (2400 px) y hojas/mini/<nombre> (900 px).
    Para agregar o quitar hojas: corre scripts/convertir.py y deja aquí sus nombres. */
 const HOJAS = [
-  // 'hoja-01.webp',
-  // 'hoja-02.webp',
+  'hoja-01.webp',
+  'hoja-02.webp',
+  'hoja-03.webp',
 ];
 
 (() => {
