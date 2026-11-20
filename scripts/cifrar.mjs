@@ -3,7 +3,7 @@
 //   node scripts/cifrar.mjs tulipan
 //
 // Lee  privado/<nombre>/contenido.json + las fotos que menciona   (privado/ nunca se sube)
-// Crea f/<nombre>/datos.enc   = IV (12 bytes) + AES-256-GCM(contenido con fotos incrustadas)
+// Crea f/<nombre>/datos.enc   = IV (12 bytes) + AES-GCM(contenido con fotos incrustadas)
 //      f/<nombre>/index.html  (si no existe)
 // La clave vive en privado/<nombre>/clave.txt y se reutiliza: el QR impreso sigue sirviendo
 // aunque cambies textos o fotos. Solo viaja en el #fragmento del link, que nunca llega al servidor.
@@ -53,13 +53,13 @@ let clave;
 if (await existe(archivoClave)) {
   clave = Buffer.from((await readFile(archivoClave, 'utf8')).trim(), 'base64url');
 } else {
-  clave = randomBytes(32);
+  clave = randomBytes(16);   // AES-128: 22 caracteres en el link, igual de imposible de adivinar
   await writeFile(archivoClave, `${clave.toString('base64url')}\n`);
 }
 
 const claro = Buffer.from(JSON.stringify(await incrustar(contenido)));
 const iv = randomBytes(12);
-const cifrador = createCipheriv('aes-256-gcm', clave, iv);
+const cifrador = createCipheriv(clave.length === 16 ? 'aes-128-gcm' : 'aes-256-gcm', clave, iv);
 const cifrado = Buffer.concat([iv, cifrador.update(claro), cifrador.final(), cifrador.getAuthTag()]);
 
 await mkdir(publico, { recursive: true });
@@ -94,7 +94,7 @@ if (!(await existe(path.join(publico, 'index.html')))) {
 `);
 }
 
-const link = `${defaults.base_url.replace(/\/+$/, '')}/f/${nombre}/#k=${clave.toString('base64url')}`;
+const link = `${defaults.base_url.replace(/\/+$/, '')}/f/${nombre}/#${clave.toString('base64url')}`;
 await writeFile(path.join(privado, 'link.txt'), `${link}\n`);
 console.log(`✓ f/${nombre}/datos.enc (${(cifrado.length / 1024).toFixed(0)} KB cifrados)`);
 console.log(`  Link con clave (NO lo publiques; va en el QR): privado/${nombre}/link.txt`);

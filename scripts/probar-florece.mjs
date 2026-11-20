@@ -28,7 +28,7 @@ const servidor = createServer(async (req, res) => {
   } catch { res.writeHead(404); res.end(); }
 });
 await new Promise((r) => servidor.listen(0, '127.0.0.1', r));
-const URL_F = `http://127.0.0.1:${servidor.address().port}/f/${nombre}/?rapido#k=${clave}`;
+const URL_F = `http://127.0.0.1:${servidor.address().port}/f/${nombre}/?rapido#${clave}`;
 
 const perfil = await mkdtemp(path.join(tmpdir(), 'florece-chrome-'));
 const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${perfil}`,

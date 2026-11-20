@@ -65,8 +65,8 @@ Publicado en GitHub Pages: `https://bayronlondonoc.github.io/invita/` (repo `bay
 
 Experiencia aparte de las invitaciones: bosque que despierta con la voz, orquídea que florece al soplar, pétalos con fotos, pintura, menú de antojos, carta y canción. Vive en `f/<nombre>/` y usa `assets/florece.js` + `assets/florece.css`.
 
-- **Privacidad:** el repo es público. Las fotos y textos personales viven en `privado/<nombre>/` (en `.gitignore`, nunca se suben). A GitHub solo va `f/<nombre>/datos.enc`, cifrado con AES-256-GCM. La clave (`privado/<nombre>/clave.txt`) solo viaja en el `#k=` del QR impreso, que no llega al servidor. Nunca publiques ni pegues en un commit el link con `#k=`.
+- **Privacidad:** el repo es público. Las fotos y textos personales viven en `privado/<nombre>/` (en `.gitignore`, nunca se suben). A GitHub solo va `f/<nombre>/datos.enc`, cifrado con AES-256-GCM. La clave (`privado/<nombre>/clave.txt`) solo viaja en el `#fragmento` del QR impreso, que no llega al servidor. Nunca publiques ni pegues en un commit el link con la clave.
 - **Crear o actualizar:** editar `privado/<nombre>/contenido.json` (+ fotos en `privado/<nombre>/fotos/`, reducidas con `sips -Z 1200`) → `node scripts/cifrar.mjs <nombre>`. La clave se reutiliza, así que un QR ya impreso sigue sirviendo.
 - **Imprimible:** `node scripts/imprimir.mjs <nombre>` → `privado/<nombre>/imprimible.pdf` (carta: tarjeta con QR + 5 vales). A color, en opalina de 240 g.
-- **Probar:** `node scripts/probar-florece.mjs <nombre> [carpeta-capturas] [ancho alto]` recorre todo con micrófono simulado. Para probar a mano sin esperas, agrega `?rapido` antes del `#k=`.
+- **Probar:** `node scripts/probar-florece.mjs <nombre> [carpeta-capturas] [ancho alto]` recorre todo con micrófono simulado. Para probar a mano sin esperas, agrega `?rapido` antes del `#`.
 - Las canciones se enlazan a YouTube con crédito al artista; nunca se incrusta el audio.

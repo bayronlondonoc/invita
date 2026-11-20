@@ -1,6 +1,6 @@
 /* Florece — regalo interactivo: bosque que despierta con la voz, orquídea que florece
    al soplar, pétalos con recuerdos, pintura, antojos, carta y canción.
-   El contenido personal llega cifrado (datos.enc); la clave viaja en el #k= del QR. */
+   El contenido personal llega cifrado (datos.enc); la clave viaja en el #fragmento del QR. */
 (() => {
   'use strict';
 
@@ -860,7 +860,8 @@
 
   async function iniciar() {
     montarBosque();
-    const k = new URLSearchParams(location.hash.slice(1)).get('k');
+    const fragmento = location.hash.slice(1);
+    const k = new URLSearchParams(fragmento).get('k') || (/^[\w-]{16,}$/.test(fragmento) ? fragmento : null);
     if (!k) return aviso('Este bosque está cerrado', 'Solo se abre con su tarjeta. 🌿');
     try {
       datos = await descifrar(k);
