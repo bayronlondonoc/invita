@@ -329,3 +329,14 @@ body {
   .pieza, .boton, .florecita, .semilla__hoja, .semilla__flor, .polaroid { transition-duration: .01s; animation-duration: .01s; }
   .semilla__tallo { animation-timing-function: linear; }
 }
+
+/* Última misión e impresión de la lámina */
+.ultima-mision { margin: 26px -6px 0; padding: 22px 14px 6px; border-top: 1px solid var(--linea); }
+.ultima-mision .btn { margin-top: 4px; }
+.impresion { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff; }
+  body > *:not(.impresion) { display: none !important; }
+  .impresion { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
+}

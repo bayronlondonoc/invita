@@ -810,22 +810,29 @@
       a.remove();
     });
 
-    const nombres = estado.menu.map((id) => ANTOJOS.find((a) => a.id === id)?.nombre.toLowerCase()).filter(Boolean);
-    const mensaje = `🌸 Ya desperté el bosque, soplé las velas y pinté mi orquídea.\n\nMi plato de cumpleaños: ${lista(nombres) || 'sorpréndeme'}. 😋`;
+    // Imprimir solo la lámina (AirPrint o "Guardar como PDF" en el iPad).
+    const imprimirBtn = h('button', {
+      class: 'btn btn-claro', type: 'button', text: 'Imprimir mi lámina 🖨️',
+      onclick: () => {
+        if (!vista.src) return;
+        let copia = document.querySelector('.impresion');
+        if (!copia) { copia = h('img', { class: 'impresion', alt: '' }); document.body.append(copia); }
+        copia.src = vista.src;
+        copia.decode().catch(() => {}).then(() => window.print());
+      },
+    });
+
     const c = datos.cancion;
     return mostrar(hoja('hoja--final',
       h('p', { class: 'eyebrow', text: 'Florecida' }),
       datos.portada && h('img', { class: 'final__foto', src: datos.portada, alt: '' }),
       h('h2', { class: 'titulo', text: `Feliz cumpleaños, ${datos.para}` }),
       vista,
-      h('div', { class: 'acciones' },
-        guardarBtn,
-        c && h('a', { class: 'btn btn-claro', href: c.url, target: '_blank', rel: 'noopener', text: `Escuchar "${c.titulo}" 🎶` }),
-        datos.whatsapp && h('a', {
-          class: 'btn btn-claro', target: '_blank', rel: 'noopener',
-          href: `https://api.whatsapp.com/send?phone=${datos.whatsapp}&text=${encodeURIComponent(mensaje)}`,
-          text: `Mandarle mi pedido a ${datos.de}`,
-        })),
+      h('div', { class: 'acciones' }, guardarBtn, imprimirBtn),
+      h('div', { class: 'ultima-mision' },
+        h('p', { class: 'eyebrow', text: 'Última misión' }),
+        h('p', { class: 'mision', text: 'Quítate los zapatos, ponte descalza… y salgamos a caminar por el bosque escuchando nuestra canción. 🌲' }),
+        c && h('a', { class: 'btn', href: c.url, target: '_blank', rel: 'noopener', text: `Poner "${c.titulo}" y salir 🎶` })),
       c && h('p', { class: 'credito', text: `Canción: "${c.titulo}", de ${c.artista}${c.nota ? ` (${c.nota})` : ''}. Todos los derechos son de su autor; aquí solo la enlazamos.` }),
       h('button', {
         class: 'enlace', type: 'button', text: 'Volver a empezar',

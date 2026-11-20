@@ -217,10 +217,12 @@ try {
   verificar(await esperarA(`!!document.querySelector('.lamina')?.src`, 8000), 'no se generó la lámina');
   await dormir(1200);
   await captura('final');
-  const wa = await ev(`[...document.querySelectorAll('a')].find((a) => a.href.includes('api.whatsapp.com'))?.href || ''`);
-  const texto = new URL(wa).searchParams.get('text') || '';
-  verificar(texto.includes('salchipapas y ceviche de camarón'), `mensaje de WhatsApp: ${texto}`);
-  console.log(`  WhatsApp: «${texto.replace(/\n/g, '⏎')}»`);
+  const cancion = await ev(`document.querySelector('.ultima-mision a.btn')?.href || ''`);
+  verificar(cancion.includes('youtube.com/watch'), `botón de la canción: ${cancion}`);
+  verificar(await ev(`/descalza/.test(document.querySelector('.ultima-mision').textContent)`), 'falta la última misión');
+  verificar(await ev(`!document.querySelector('a[href*="whatsapp"]')`), 'todavía hay un botón de WhatsApp');
+  verificar(await ev(`!!document.querySelector('.acciones .btn-claro') && /Imprimir/.test(document.querySelector('.acciones').textContent)`), 'falta el botón de imprimir');
+  console.log(`  Canción: ${cancion}`);
   // Reanudar tras recargar
   await cdp('Page.reload', {});
   verificar(await esperarA(visible('.lamina'), 8000), 'al recargar no volvió al final');
