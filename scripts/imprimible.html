@@ -1,0 +1,94 @@
+<!doctype html>
+<!-- Hoja carta imprimible de una Florece: tarjeta con QR (arriba) + vales recortables (abajo).
+     No se abre a mano: la genera scripts/imprimir.mjs, que le pasa los datos por el #fragmento. -->
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Florece — imprimible</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500;1,600&family=Jost:wght@300;400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="../assets/florece.js"></script>
+<style>
+  @page { size: letter; margin: 0; }
+  :root { --vino: #7A1F2B; --tinta: #2E2622; --suave: rgba(46,38,34,.62); --dorado: #B08D57; --verde: #3F6B4A; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; }
+  body { width: 8.5in; height: 11in; overflow: hidden; font-family: 'Jost', sans-serif; color: var(--tinta); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .tarjeta { position: relative; height: 5.5in; padding: .38in .42in; display: grid; grid-template-columns: 1fr 1fr; gap: .25in; }
+  .tarjeta::before { content: ""; position: absolute; inset: .2in; border: 1.2pt solid var(--dorado); border-radius: 4pt; }
+  .tarjeta::after { content: ""; position: absolute; inset: .26in; border: .5pt solid rgba(176,141,87,.6); border-radius: 3pt; }
+  .dibujo { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
+  .dibujo svg { width: 3.9in; height: 3.9in; }
+  .texto { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-right: .1in; }
+  .sello {
+    width: .62in; height: .62in; display: grid; place-items: center; margin-bottom: .14in;
+    border-radius: 50% 47% 52% 49% / 49% 52% 47% 51%;
+    background: radial-gradient(circle at 34% 30%, #B23A6B 0%, var(--vino) 45%, #4E1019 100%);
+    box-shadow: inset 0 -3pt 6pt rgba(0,0,0,.25);
+    font: italic 600 20pt/1 'Cormorant Garamond', serif; color: rgba(255,230,230,.7);
+  }
+  .para { margin: 0; font: 400 8.5pt/1.3 'Jost', sans-serif; letter-spacing: .26em; text-transform: uppercase; color: var(--vino); }
+  .nombre { margin: .04in 0 .1in; font: italic 500 40pt/1 'Cormorant Garamond', serif; color: var(--vino); }
+  .frase { margin: 0 0 .18in; font: italic 400 14pt/1.35 'Cormorant Garamond', serif; max-width: 2.9in; }
+  .qr { position: relative; padding: .09in; background: #fff; border: .6pt solid rgba(176,141,87,.7); border-radius: 6pt; }
+  .qr svg { display: block; width: 1.3in; height: 1.3in; }
+  .qr::before, .qr::after { content: "❦"; position: absolute; top: 50%; transform: translateY(-50%); font-size: 16pt; color: var(--verde); }
+  .qr::before { left: -.28in; } .qr::after { right: -.28in; transform: translateY(-50%) scaleX(-1); }
+  .instruccion { margin: .1in 0 0; font: 400 7.5pt/1.3 'Jost', sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--suave); }
+  .pinta { margin: .06in 0 0; font: italic 400 10.5pt/1.3 'Cormorant Garamond', serif; color: var(--suave); }
+
+  .corte { height: 0; border-top: 1pt dashed rgba(46,38,34,.45); position: relative; }
+  .corte span { position: absolute; left: .3in; top: -7pt; background: #fff; padding: 0 4pt; font-size: 9pt; color: var(--suave); }
+
+  .vales { height: calc(5.5in - 4pt); padding: .32in .3in .3in; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+  .vale { position: relative; padding: .2in .18in; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: .8pt dashed rgba(46,38,34,.4); margin: -0.4pt; }
+  .vale__titulo { margin: 0; font: 400 7.5pt/1 'Jost', sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--vino); }
+  .vale__flor { font-size: 15pt; color: var(--verde); margin: .05in 0; }
+  .vale__texto { margin: 0; font: italic 500 15pt/1.22 'Cormorant Garamond', serif; }
+  .vale__pie { margin: .1in 0 0; font: 400 6.5pt/1.3 'Jost', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--suave); }
+  .vale--portada { background: #FBF3F6; }
+  .vale--portada .vale__texto { font-size: 22pt; color: var(--vino); }
+</style>
+</head>
+<body>
+  <section class="tarjeta">
+    <div class="dibujo" id="dibujo"></div>
+    <div class="texto">
+      <div class="sello" id="sello"></div>
+      <p class="para">Para</p>
+      <p class="nombre" id="nombre"></p>
+      <p class="frase">Este bosque está dormido.<br>Despiértalo con tu voz.</p>
+      <div class="qr" id="qr"></div>
+      <p class="instruccion">Escanéame con la cámara</p>
+      <p class="pinta">y si quieres, píntame a mí también.</p>
+    </div>
+  </section>
+  <div class="corte"><span>✂ corta aquí</span></div>
+  <section class="vales" id="vales"></section>
+<script>
+  const d = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+  document.getElementById('nombre').textContent = d.para;
+  document.getElementById('sello').textContent = (d.de || '♥').charAt(0);
+  document.getElementById('dibujo').innerHTML = window.FloreceOrquidea({ modo: 'linea', tallo: true, papel: '#FFFFFF' });
+  const qr = qrcode(0, 'M');
+  qr.addData(d.url);
+  qr.make();
+  document.getElementById('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  const vales = document.getElementById('vales');
+  const vale = (titulo, texto, pie, extra = '') => {
+    const v = document.createElement('div');
+    v.className = `vale ${extra}`;
+    v.innerHTML = '<p class="vale__titulo"></p><div class="vale__flor">✿</div><p class="vale__texto"></p><p class="vale__pie"></p>';
+    v.querySelector('.vale__titulo').textContent = titulo;
+    v.querySelector('.vale__texto').textContent = texto;
+    v.querySelector('.vale__pie').textContent = pie;
+    vales.append(v);
+  };
+  vale('Vales de cumpleaños', `Para ${d.para}`, `Canjeables con ${d.de}. No vencen.`, 'vale--portada');
+  for (const t of d.vales) vale('Vale por', t, `Firmado: ${d.de}`);
+  document.body.dataset.listo = '1';
+</script>
+</body>
+</html>
