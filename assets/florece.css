@@ -340,3 +340,4 @@ body {
   body > *:not(.impresion) { display: none !important; }
   .impresion { display: block; width: 100%; max-height: 100vh; object-fit: contain; }
 }
+.reproductor { display: block; width: 100%; max-width: 360px; margin: 14px auto 4px; }

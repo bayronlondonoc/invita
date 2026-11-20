@@ -4,6 +4,7 @@
 //
 // Lee  privado/<nombre>/contenido.json + las fotos que menciona   (privado/ nunca se sube)
 // Crea f/<nombre>/datos.enc   = IV (12 bytes) + AES-GCM(contenido con fotos incrustadas)
+//      f/<nombre>/cancion.enc = igual, con el audio de cancion.archivo (si hay), aparte para no demorar la entrada
 //      f/<nombre>/index.html  (si no existe)
 // La clave vive en privado/<nombre>/clave.txt y se reutiliza: el QR impreso sigue sirviendo
 // aunque cambies textos o fotos. Solo viaja en el #fragmento del link, que nunca llega al servidor.
@@ -57,12 +58,23 @@ if (await existe(archivoClave)) {
   await writeFile(archivoClave, `${clave.toString('base64url')}\n`);
 }
 
-const claro = Buffer.from(JSON.stringify(await incrustar(contenido)));
-const iv = randomBytes(12);
-const cifrador = createCipheriv(clave.length === 16 ? 'aes-128-gcm' : 'aes-256-gcm', clave, iv);
-const cifrado = Buffer.concat([iv, cifrador.update(claro), cifrador.final(), cifrador.getAuthTag()]);
+function cifrar(bytes) {
+  const iv = randomBytes(12);
+  const cifrador = createCipheriv(clave.length === 16 ? 'aes-128-gcm' : 'aes-256-gcm', clave, iv);
+  return Buffer.concat([iv, cifrador.update(bytes), cifrador.final(), cifrador.getAuthTag()]);
+}
 
 await mkdir(publico, { recursive: true });
+const publicable = { ...contenido };
+if (contenido.cancion?.archivo) {
+  const audio = await readFile(path.join(privado, contenido.cancion.archivo));
+  const tipo = /\.mp3$/i.test(contenido.cancion.archivo) ? 'audio/mpeg' : 'audio/mp4';
+  await writeFile(path.join(publico, 'cancion.enc'), cifrar(audio));
+  const { archivo, ...resto } = contenido.cancion;
+  publicable.cancion = { ...resto, cifrada: 'cancion.enc', tipo };
+  console.log(`✓ f/${nombre}/cancion.enc (${(audio.length / 1024).toFixed(0)} KB de audio cifrados)`);
+}
+const cifrado = cifrar(Buffer.from(JSON.stringify(await incrustar(publicable))));
 await writeFile(path.join(publico, 'datos.enc'), cifrado);
 if (!(await existe(path.join(publico, 'index.html')))) {
   await writeFile(path.join(publico, 'index.html'), `<!doctype html>

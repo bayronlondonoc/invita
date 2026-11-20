@@ -217,8 +217,20 @@ try {
   verificar(await esperarA(`!!document.querySelector('.lamina')?.src`, 8000), 'no se generó la lámina');
   await dormir(1200);
   await captura('final');
-  const cancion = await ev(`document.querySelector('.ultima-mision a.btn')?.href || ''`);
-  verificar(cancion.includes('youtube.com/watch'), `botón de la canción: ${cancion}`);
+  // Canción: propia (cifrada, se reproduce aquí) o enlace a YouTube.
+  const propia = await ev(`!!document.querySelector('.reproductor')`);
+  let cancion = '';
+  if (propia) {
+    verificar(await esperarA(`document.querySelector('.reproductor').src.startsWith('blob:')`, 15000), 'la canción cifrada no se descifró');
+    await tocar('.ultima-mision .btn');
+    await dormir(1500);
+    const sonando = await ev(`(() => { const a = document.querySelector('.reproductor'); return { t: a.currentTime, pausada: a.paused, dur: a.duration }; })()`);
+    verificar(!sonando.pausada && sonando.t > 0, `la canción no suena: ${JSON.stringify(sonando)}`);
+    cancion = `propia, ${Math.round(sonando.dur)} s, sonando en ${sonando.t.toFixed(1)} s`;
+  } else {
+    cancion = await ev(`document.querySelector('.ultima-mision a.btn')?.href || ''`);
+    verificar(cancion.includes('youtube.com/watch'), `botón de la canción: ${cancion}`);
+  }
   verificar(await ev(`/descalza/.test(document.querySelector('.ultima-mision').textContent)`), 'falta la última misión');
   verificar(await ev(`!document.querySelector('a[href*="whatsapp"]')`), 'todavía hay un botón de WhatsApp');
   verificar(await ev(`!!document.querySelector('.acciones .btn-claro') && /Imprimir/.test(document.querySelector('.acciones').textContent)`), 'falta el botón de imprimir');

@@ -823,6 +823,31 @@
     });
 
     const c = datos.cancion;
+    let reproductor = null;
+    if (c?.cifrada) {
+      const audio = h('audio', { class: 'reproductor', controls: true, preload: 'auto', playsinline: true, hidden: true });
+      const poner = h('button', { class: 'btn', type: 'button', text: 'Poner nuestra canción y salir 🎶' });
+      const estadoCancion = h('p', { class: 'texto texto--suave' });
+      prepararCancion();
+      cancionLista.then((url) => {
+        if (url) audio.src = url;
+        else estadoCancion.textContent = 'No pude cargar la canción. Revisa la conexión y recarga la página.';
+      });
+      poner.addEventListener('click', async () => {
+        audio.hidden = false;
+        if (!audio.src) {
+          estadoCancion.textContent = 'Cargando la canción… 🎶';
+          await cancionLista;
+          estadoCancion.textContent = audio.src ? 'Lista: dale play. ▶️' : estadoCancion.textContent;
+          return;
+        }
+        try { await audio.play(); poner.hidden = true; } catch { estadoCancion.textContent = 'Dale play aquí abajo. ▶️'; }
+      });
+      reproductor = [poner, estadoCancion, audio];
+    } else if (c?.url) {
+      reproductor = [h('a', { class: 'btn', href: c.url, target: '_blank', rel: 'noopener', text: `Poner "${c.titulo}" y salir 🎶` })];
+    }
+    const credito = c?.credito || (c?.artista && `Canción: "${c.titulo}", de ${c.artista}${c.nota ? ` (${c.nota})` : ''}. Todos los derechos son de su autor; aquí solo la enlazamos.`);
     return mostrar(hoja('hoja--final',
       h('p', { class: 'eyebrow', text: 'Florecida' }),
       datos.portada && h('img', { class: 'final__foto', src: datos.portada, alt: '' }),
@@ -832,8 +857,8 @@
       h('div', { class: 'ultima-mision' },
         h('p', { class: 'eyebrow', text: 'Última misión' }),
         h('p', { class: 'mision', text: 'Quítate los zapatos, ponte descalza… y salgamos a caminar por el bosque escuchando nuestra canción. 🌲' }),
-        c && h('a', { class: 'btn', href: c.url, target: '_blank', rel: 'noopener', text: `Poner "${c.titulo}" y salir 🎶` })),
-      c && h('p', { class: 'credito', text: `Canción: "${c.titulo}", de ${c.artista}${c.nota ? ` (${c.nota})` : ''}. Todos los derechos son de su autor; aquí solo la enlazamos.` }),
+        reproductor),
+      credito && h('p', { class: 'credito', text: credito }),
       h('button', {
         class: 'enlace', type: 'button', text: 'Volver a empezar',
         onclick: () => { if (confirm('¿Empezar el bosque desde el principio?')) { memoria.borrar(); location.reload(); } },
@@ -854,15 +879,29 @@
     return u;
   }
 
+  let claveAES = null;
+  async function descifrarArchivo(nombre) {
+    const r = await fetch(new URL(nombre, carpeta()), { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const buf = await r.arrayBuffer();
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, claveAES, buf.slice(12));
+  }
+
   async function descifrar(claveB64) {
     const b64 = claveB64.replace(/-/g, '+').replace(/_/g, '/');
     const bytes = Uint8Array.from(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)), (c) => c.charCodeAt(0));
-    const clave = await crypto.subtle.importKey('raw', bytes, 'AES-GCM', false, ['decrypt']);
-    const r = await fetch(new URL('datos.enc', carpeta()), { cache: 'no-cache' });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const buf = await r.arrayBuffer();
-    const plano = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, clave, buf.slice(12));
-    return JSON.parse(new TextDecoder().decode(plano));
+    claveAES = await crypto.subtle.importKey('raw', bytes, 'AES-GCM', false, ['decrypt']);
+    return JSON.parse(new TextDecoder().decode(await descifrarArchivo('datos.enc')));
+  }
+
+  // La canción propia viaja cifrada aparte y se descarga en segundo plano desde el inicio.
+  let cancionLista = null;
+  function prepararCancion() {
+    const c = datos.cancion;
+    if (!c?.cifrada || cancionLista) return;
+    cancionLista = descifrarArchivo(c.cifrada)
+      .then((buf) => URL.createObjectURL(new Blob([buf], { type: c.tipo || 'audio/mp4' })))
+      .catch(() => null);
   }
 
   async function iniciar() {
@@ -875,6 +914,7 @@
     } catch {
       return aviso('No pude abrir el bosque', 'Revisa la conexión y vuelve a escanear la tarjeta.');
     }
+    prepararCancion();
     window.__florece = { datos: { para: datos.para, petalos: datos.petalos.length }, pasos: PASOS, estado: () => estado };
     estado = { ...estado, ...(memoria.leer() || {}) };
     if (PASOS.indexOf('bosque') < estado.paso) despertarBosque();
